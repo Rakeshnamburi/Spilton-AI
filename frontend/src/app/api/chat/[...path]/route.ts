@@ -7,7 +7,7 @@ type Context = { params: Promise<{ path: string[] }> };
 async function proxy(request: NextRequest, { params }: Context) {
   const path = (await params).path.join('/');
   if (path === 'agents/run') { /* explicitly allow the bounded agent endpoint */ }
-  if (!/^(capabilities|tools(?:\/(?:calculator|date_time))?|mocks\/(?:catalog|practice|questions|tests\/[0-9a-f-]{36}\/attempts|attempts(?:\/[0-9a-f-]{36}(?:\/(?:submit|tutor|answers\/[0-9a-f-]{36}))?)?|papers\/[0-9a-f-]{36}\/(?:status|questions|convert))|government\/(?:resources(?:\/[0-9a-f-]{36}(?:\/(?:eligibility|download))?)?|compare|research-status)|spaces(?:\/[0-9a-f-]{36})?|preparation\/(?:catalog|dashboard|profile|goals|memories|plans|progress|plan-items)(?:\/[0-9a-f-]{36})?|models|conversations(?:\/[0-9a-f-]{36}(?:\/(messages|regenerate|stop))?)?|documents(?:\/[0-9a-f-]{36}(?:\/chunks\/[0-9a-f-]{36})?)?)$/.test(path)) return new Response(null, { status: 404 });
+  if (!/^(capabilities|workspace\/archive|tools(?:\/(?:calculator|date_time))?|mocks\/(?:catalog|practice|questions|tests\/[0-9a-f-]{36}\/attempts|attempts(?:\/[0-9a-f-]{36}(?:\/(?:submit|tutor|answers\/[0-9a-f-]{36}))?)?|papers\/[0-9a-f-]{36}\/(?:status|questions|convert))|government\/(?:resources(?:\/[0-9a-f-]{36}(?:\/(?:eligibility|download))?)?|compare|research-status)|spaces(?:\/[0-9a-f-]{36})?|preparation\/(?:catalog|dashboard|profile|goals|memories|plans|progress|plan-items)(?:\/[0-9a-f-]{36})?|models|conversations(?:\/[0-9a-f-]{36}(?:\/(messages|regenerate|stop))?)?|documents(?:\/[0-9a-f-]{36}(?:\/chunks\/[0-9a-f-]{36})?)?)$/.test(path)) return new Response(null, { status: 404 });
   const token = (await cookies()).get(AUTH_COOKIE)?.value;
   if (!token) return NextResponse.json({ title: 'Please sign in again.' }, { status: 401 });
   if (request.method !== 'GET' && !isAllowedOrigin(request.headers.get('origin')))
@@ -21,7 +21,7 @@ async function proxy(request: NextRequest, { params }: Context) {
     while (true) {
       const { done, value } = await reader.read(); if (done) break;
       size += value.byteLength;
-      if (size > (upload ? 5300000 : 40000)) { await reader.cancel(); return NextResponse.json({ title: upload ? 'Files must be 5 MB or smaller.' : 'Message is too large.' }, { status: 413 }); }
+      if (size > (upload ? 5300000 : path === 'workspace/archive' ? 220000 : 40000)) { await reader.cancel(); return NextResponse.json({ title: upload ? 'Files must be 5 MB or smaller.' : 'Message is too large.' }, { status: 413 }); }
       chunks.push(value);
     }
     body = Uint8Array.from(Buffer.concat(chunks)).buffer;

@@ -10,6 +10,15 @@ MVP operational guidance is in [release readiness](docs/release-readiness.md) an
 
 ## Run again on this computer
 
+For the final Windows verification, do not start or reset PostgreSQL from an automated tool. First run the read-only diagnostic in your own PowerShell window:
+
+```powershell
+Set-Location 'D:\Spilton AI\spilton-ai'
+.\scripts\check-postgres.ps1
+```
+
+It reports the existing server, application database, and pgvector status without changing data. After it reports healthy, start the backend and frontend using the commands below, then run `.\scripts\verify-local.ps1` from the repository root. The verification script stops with a clear message if PostgreSQL is unavailable; it never initializes, resets, drops, or deletes a database.
+
 Use PowerShell. PostgreSQL and .NET 10 were installed inside this project; the scripts select the local SDK automatically. Existing local secrets and database contents are preserved.
 
 Terminal 1 — database, migrations, backend:

@@ -3,6 +3,20 @@ import { useState, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check } from 'lucide-react';
+export function hasNamedProjectFiles(content: string) { return /```[\w+#.-]+\s+(?:file|filename)=[^\r\n`]+\r?\n[\s\S]*?```/i.test(content); }
+export function DownloadProjectButton({ content, projectName = 'spilton-project' }: { content: string; projectName?: string }) {
+  const [status, setStatus] = useState('');
+  async function download() {
+    setStatus('Preparing…');
+    try {
+      const response = await fetch('/api/chat/workspace/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, projectName }) });
+      if (!response.ok) { const problem = await response.json().catch(() => ({})); throw new Error(problem.title || 'Project export failed.'); }
+      const blob = await response.blob(); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${projectName}.zip`; anchor.click(); URL.revokeObjectURL(url); setStatus('Downloaded');
+    } catch (error) { setStatus(error instanceof Error ? error.message : 'Download failed.'); }
+    setTimeout(() => setStatus(''), 3500);
+  }
+  return <span className="copy-control"><button type="button" className="sp-icon-text" onClick={() => void download()}>{status || 'Download project ZIP'}</button></span>;
+}
 export function CopyButton({ text, label = 'Copy response' }: { text: string; label?: string }) {
   const [status, setStatus] = useState('');
   async function copy() {
