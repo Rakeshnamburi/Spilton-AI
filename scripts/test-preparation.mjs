@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {randomUUID,randomBytes} from 'node:crypto';
+const base='http://localhost:5081/api';let checks=0;
+async function req(path,method='GET',body,token,status=200){const r=await fetch(base+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});assert.equal(r.status,status,`${method} ${path}: ${await r.clone().text()}`);checks++;return r.status===204?null:r.json();}
+async function account(){const email=`prep-${randomUUID()}@example.test`,password=randomBytes(24).toString('base64url');return {...await req('/auth/register','POST',{name:'Preparation Test',email,password},null,201),email,password};}
+const a=await account(),b=await account(),t=a.accessToken,u=b.accessToken;
+await req('/spaces','GET',undefined,null,401);
+const s=await req('/spaces','POST',{name:'SSC Test',type:'EXAM'},t,201),p=await req('/spaces','POST',{name:'Python Test',type:'LEARNING'},t,201);
+await req('/spaces/'+s.id,'GET',undefined,u,404);
+await req('/conversations','POST',{spaceId:s.id},u,404);
+const cat=await req('/preparation/catalog','GET',undefined,t),exam=cat.exams.find(x=>x.name==='SSC CGL'),stage=cat.stages.find(x=>x.examId===exam.id&&x.name==='Tier 1');
+await req('/preparation/profile','POST',{spaceId:s.id,examStageId:stage.id,dailyMinutes:60,level:'BEGINNER',preferredLanguage:'Telugu'},t);
+const goal=await req('/preparation/goals','POST',{spaceId:s.id,title:'Finish Percentage'},t);
+const memory=await req('/preparation/memories','POST',{spaceId:s.id,type:'WeakArea',content:'Percentage needs basics',approved:true},t);
+await req('/preparation/memories','POST',{spaceId:s.id,type:'Preference',content:'my password is private',approved:true},t,400);
+let d=await req('/preparation/dashboard?spaceId='+s.id,'GET',undefined,t),topic=d.topics.find(x=>x.name==='Percentage');assert.equal(d.profile.preferredLanguage,'Telugu');assert.equal(d.accuracyPercent,null);
+await req('/preparation/progress/'+topic.id,'PATCH',{spaceId:s.id,status:'LEARNING',questionsAttempted:25,questionsCorrect:12},t,204);
+await req('/preparation/progress/'+topic.id,'PATCH',{spaceId:s.id,status:'LEARNING',questionsAttempted:2,questionsCorrect:3},t,400);
+await req('/preparation/plans','POST',{spaceId:s.id,startDate:new Date().toISOString().slice(0,10),days:3},t);
+d=await req('/preparation/dashboard?spaceId='+s.id,'GET',undefined,t);assert.equal(d.accuracyPercent,48);assert.equal(d.recommendations[0].topic,'Percentage');assert.equal(d.planItems.reduce((s,i)=>s+i.minutes,0),180);
+await req('/preparation/plan-items/'+d.planItems[0].id,'PATCH',{date:d.planItems[0].date,minutes:20,status:'DONE'},t,204);
+await req('/preparation/dashboard?spaceId='+s.id,'GET',undefined,u,404);
+await req('/preparation/memories/'+memory.id,'PATCH',{isActive:false},u,404);
+await req('/preparation/memories/'+memory.id,'PATCH',{isActive:false},t,204);
+const empty=await req('/preparation/dashboard?spaceId='+p.id,'GET',undefined,t);assert.equal(empty.profile,null);assert.equal(empty.memories.length,0);assert.equal(empty.goals.length,0);
+const c=await req('/conversations','POST',{spaceId:s.id},t,201);assert.equal(c.spaceId,s.id);
+assert.equal((await req('/conversations?spaceId='+p.id,'GET',undefined,t)).items.length,0);
+await req('/spaces/'+s.id,'DELETE',undefined,t,409);
+const login=await req('/auth/login','POST',{email:a.email,password:a.password});assert.equal((await req('/preparation/dashboard?spaceId='+s.id,'GET',undefined,login.accessToken)).planItems.length,9);
+await req('/conversations/'+c.id,'DELETE',undefined,t,204);await req('/preparation/goals/'+goal.id,'DELETE',undefined,t,204);await req('/preparation/memories/'+memory.id,'DELETE',undefined,t,204);
+await req('/spaces/'+s.id,'PATCH',{name:s.name,type:'EXAM',isArchived:true},t);await req('/spaces/'+p.id,'DELETE',undefined,t,204);
+console.log(`Preparation: ${checks} HTTP assertions plus persistence, scope, recommendation, accuracy and plan checks passed. Only test-created profile/plan Space retained archived.`);

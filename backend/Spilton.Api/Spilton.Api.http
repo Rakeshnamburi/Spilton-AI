@@ -1,0 +1,15 @@
+@Spilton.Api_HostAddress = http://localhost:5080
+
+GET {{Spilton.Api_HostAddress}}/api/health
+Accept: application/json
+
+###
+
+GET {{Spilton.Api_HostAddress}}/openapi/v1.json
+Accept: application/json
+
+###
+
+# Expected 401 without a bearer token.
+GET {{Spilton.Api_HostAddress}}/api/auth/me
+Accept: application/json

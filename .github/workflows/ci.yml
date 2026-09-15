@@ -1,0 +1,57 @@
+name: SPILTON quality gate
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: spilton_ci
+          POSTGRES_USER: spilton
+          POSTGRES_PASSWORD: test-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U spilton -d spilton_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=spilton_ci;Username=spilton;Password=test-only-password
+      Jwt__Secret: ci-only-random-looking-secret-over-thirty-two-bytes
+      Jwt__Issuer: Spilton.Api
+      Jwt__Audience: Spilton.Web
+      Cors__AllowedOrigins__0: http://localhost:3000
+      Models__DevelopmentEnabled: "true"
+      Models__Default: development
+      ASPNETCORE_ENVIRONMENT: Development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore Spilton.slnx --locked-mode
+      - run: dotnet test Spilton.slnx --no-restore --configuration Release
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit --incremental false
+      - run: npm run build
+        env:
+          API_BASE_URL: http://127.0.0.1:5081
+          APP_ORIGIN: http://localhost:3000
+          AUTH_COOKIE_SECURE: "false"
+

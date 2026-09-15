@@ -1,0 +1,47 @@
+@import "tailwindcss";
+:root { --background: #fafbf8; --foreground: #23332b; --accent: #275d48; --border: #dde3db; }
+@theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --font-sans: Arial, Helvetica, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: Arial, Helvetica, sans-serif; font-size: 15px; }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; } button:disabled { cursor: not-allowed; opacity: .6; } a { color: var(--accent); }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #83b99f; outline-offset: 3px; }
+h1 { font-size: clamp(27px, 3vw, 36px); line-height: 1.2; letter-spacing: -1px; font-weight: 600; margin: 14px 0; } p { line-height: 1.65; }
+.muted { color: #69766d; }
+.brand { display: flex; align-items: center; gap: 7px; font-size: 22px; font-weight: 600; text-decoration: none; color: var(--foreground); letter-spacing: -.6px; }
+.brand-mark { display: grid; place-items: center; width: 32px; height: 32px; margin-right: 4px; background: var(--accent); border-radius: 10px; color: white; font-family: Georgia, serif; font-style: italic; }
+.eyebrow { font-size: 10px; font-weight: 600; letter-spacing: 1.7px; color: #7a887f; }
+.auth-page { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 32px 20px; }
+.auth-card { width: 100%; max-width: 430px; border: 1px solid var(--border); background: white; border-radius: 18px; padding: 32px; box-shadow: 0 10px 45px #23332b06; }
+.auth-card h1 { font-size: 29px; } fieldset { padding: 0; border: 0; min-width: 0; } form { margin-top: 26px; }
+label { display: block; font-size: 13px; font-weight: 600; margin-top: 17px; }
+input { display: block; width: 100%; padding: 12px; border: 1px solid #ced8cf; border-radius: 8px; margin-top: 7px; background: #fcfdfb; color: var(--foreground); }
+.primary-button { display: block; width: 100%; text-align: center; text-decoration: none; padding: 12px; color: white; background: var(--accent); border: 0; border-radius: 8px; margin-top: 24px; font-weight: 600; }
+.primary-button:hover { background: #1d4c39; } .field-help, .auth-footer { color: #738078; font-size: 12px; }
+.auth-switch { text-align: center; font-size: 13px; margin: 25px 0 0; } .auth-switch a { font-weight: 600; }
+.error-message { padding: 12px; font-size: 13px; background: #fff2f0; color: #94372d; border-radius: 8px; border: 1px solid #efd1cc; }
+.workspace { min-height: 100dvh; display: flex; }
+.sidebar { width: 260px; flex-shrink: 0; background: #f0f3ed; border-right: 1px solid var(--border); padding: 30px 22px 20px; display: flex; flex-direction: column; }
+.new-chat { margin-top: 35px; padding: 11px 14px; background: white; border: 1px solid #d0dacf; border-radius: 8px; text-align: left; font-weight: 500; display: flex; gap: 12px; align-items: center; }
+.sidebar-history { flex: 1; margin-top: 30px; } .sidebar-history .muted { font-size: 12px; max-width: 165px; }
+.profile { border-top: 1px solid var(--border); padding-top: 20px; display: flex; gap: 10px; align-items: center; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: #dce6d8; display: grid; place-items: center; flex-shrink: 0; }
+.profile-text { min-width: 0; } .profile strong, .profile small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.profile small { color: #738078; margin-top: 4px; font-size: 10px; } .logout { background: none; border: 0; text-align: left; color: #617368; font-size: 12px; margin: 16px 0 0 44px; }
+.chat-main { flex: 1; min-width: 0; display: flex; flex-direction: column; } .topbar { border-bottom: 1px solid #e8ebe5; display: flex; justify-content: space-between; align-items: center; padding: 22px 32px; font-size: 13px; }
+.status-badge { border: 1px solid #dde4d7; padding: 5px 10px; border-radius: 20px; color: #698064; font-size: 10px; }
+.chat-body { flex: 1; display: flex; flex-direction: column; max-width: 880px; width: 100%; align-self: center; padding: 35px 40px 20px; }
+.welcome { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0 60px; }
+.welcome-mark { display: grid; place-items: center; background: #e8eee1; border: 1px solid #dce5d4; color: var(--accent); width: 64px; height: 64px; border-radius: 22px; font: italic 38px Georgia, serif; margin-bottom: 24px; }
+.welcome p { max-width: 510px; } .foundation-note { display: flex; align-items: center; gap: 7px; font-size: 11px; margin-top: 24px; flex-wrap: wrap; justify-content: center; }
+.status-dot { background: #709863; width: 6px; height: 6px; border-radius: 50%; }
+.composer { border: 1px solid #dce2d7; padding: 16px; border-radius: 15px; background: white; box-shadow: 0 4px 18px #23332b04; }
+.composer textarea { width: 100%; resize: none; background: transparent; border: 0; font-size: 13px; }
+.composer-bottom { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #8b978d; }
+.composer-bottom button { border: 0; border-radius: 8px; background: #dae3d4; width: 30px; height: 30px; color: #5c7659; font-size: 20px; }
+.composer-help { text-align: center; font-size: 10px; color: #83907f; margin: 12px 0 0; } .notice { text-align: center; font-size: 12px; color: var(--accent); }
+@media (max-width: 700px) {
+  .workspace { flex-direction: column; } .sidebar { width: 100%; border-right: 0; border-bottom: 1px solid var(--border); padding: 15px 18px; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 14px; }
+  .sidebar .brand { font-size: 18px; margin-right: auto; } .new-chat { margin: 0; padding: 8px; font-size: 12px; } .sidebar-history, .profile { display: none; } .logout { margin: 0; }
+  .topbar { padding: 16px 20px; } .chat-body { padding: 16px 20px; } .welcome { padding: 34px 0 42px; } .welcome h1 { font-size: 28px; } .welcome .muted { font-size: 13px; } .auth-card { padding: 25px; }
+}

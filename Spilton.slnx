@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/Spilton.Api.Tests/Spilton.Api.Tests.csproj" />
+    <Project Path="backend/Spilton.Api/Spilton.Api.csproj" />
+  </Folder>
+</Solution>

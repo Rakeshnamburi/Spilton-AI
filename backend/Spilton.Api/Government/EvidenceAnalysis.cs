@@ -1,0 +1,32 @@
+using System.Text.RegularExpressions;
+using Spilton.Api.Documents;
+namespace Spilton.Api.Government;
+public static class EvidenceAnalysis
+{
+ static readonly (string Name,string Pattern)[] Labels=[("Organization",@"commission|ministry|department|organization"),("Qualification",@"qualification|bachelor|graduate|matriculation|degree|education"),("Age",@"\bage\b|\bages\b|age.limit"),("AgeRelaxation",@"relaxation|upper.age"),("ImportantDates",@"deadline|closing date|last date|application.*date|commencement"),("Fee",@"\bfee\b"),("SelectionProcess",@"selection|interview|tier|stage"),("ExamPattern",@"exam.*pattern|marks|duration|negative marking"),("Vacancies",@"vacanc"),("ApplicationInstructions",@"apply|application.*submit|applications.*online"),("Syllabus",@"syllabus|curriculum|indicative topics"),("Experience",@"experience"),("Citizenship",@"citizenship|nationality")];
+ public static List<NotificationField> Extract(IEnumerable<DocumentChunk> chunks){var result=new List<NotificationField>();foreach(var chunk in chunks.OrderBy(c=>c.ChunkIndex)){
+  foreach(var (name,pattern) in Labels){if(result.Count(f=>f.Name==name)>=8)continue;var lines=chunk.Content.Split('\n');for(var i=0;i<lines.Length;i++){var line=lines[i];if(!Regex.IsMatch(line,pattern,RegexOptions.IgnoreCase))continue;var quote=line.TrimEnd().EndsWith(':')||line.Split(' ',StringSplitOptions.RemoveEmptyEntries).Length<4?string.Join("\n",lines.Skip(i).Take(4)):line;result.Add(new(){Name=name,Quote=quote.Length<=1800?quote:quote[..1800],ChunkId=chunk.Id,Page=chunk.PageNumber,Section=chunk.Section});break;}}
+ }return result;}
+ public static object Paper(IEnumerable<DocumentChunk> chunks){var text=string.Join("\n",chunks.OrderBy(c=>c.ChunkIndex).Select(c=>c.Content));var questions=Regex.Matches(text,@"(?m)^\s*(?:Q(?:uestion)?\.?\s*)?\d{1,3}[.)]\s+[^\n]+",RegexOptions.IgnoreCase).Select(m=>m.Value.Trim()).Distinct().Take(500).ToArray();var terms=new[]{("Percentage",@"percent|%"),("Profit and Loss",@"profit|loss|cost price"),("Geometry",@"triangle|circle|angle"),("Reasoning",@"series|code|sequence"),("English",@"grammar|synonym|antonym|sentence")};var topics=terms.Select(t=>new{topic=t.Item1,count=questions.Count(q=>Regex.IsMatch(q,t.Item2,RegexOptions.IgnoreCase))}).Where(t=>t.count>0).ToArray();return new{extractionStatus=questions.Length==0?"NO_RELIABLE_QUESTION_BOUNDARIES":"HEURISTIC_REVIEW_REQUIRED",detectedQuestionCount=questions.Length,topics,questions=questions.Take(20),methodology="Distinct numbered first lines and explicit keyword matches; multi-line questions, formulas and scanned pages may be missed. Counts can overlap. Not historical weightage. No difficulty estimate."};}
+ public static object Relevance(GovernmentResource r){var signals=new List<string>();var text=r.Title+" "+r.Summary;if(Regex.IsMatch(text,"scheme|policy|mission",RegexOptions.IgnoreCase))signals.Add("Policy, scheme or mission keyword");if(Regex.IsMatch(text,"appointment|appointed|award|report|index|econom",RegexOptions.IgnoreCase))signals.Add("Appointment, award, report or economy keyword");if(r.SourceType=="OFFICIAL")signals.Add("Verified official source");if(r.ExamId.HasValue)signals.Add("Manually assigned target exam");return new{score=Math.Min(100,signals.Count*25),signals,method="Transparent keyword and metadata rules; no ML"};}
+}
+public sealed record EligibilityInput(int? Age,string? Education,bool ReviewedAllRules=false,bool NeedsRelaxation=false);
+public static class EligibilityEngine
+{
+ public static object Check(IReadOnlyList<NotificationField> fields,EligibilityInput input){
+  var results=new List<object>();var states=new List<string>();
+  void Add(string rule,string state,string reason,NotificationField? field,object? used){states.Add(state);results.Add(new{rule,state,reason,userDataUsed=used,source=field is null?null:new{field.Quote,field.ChunkId,field.Page,field.Section}});}
+  var age=fields.Where(f=>f.Name=="Age").ToArray();var matches=age.Select(f=>(f,m:Regex.Match(f.Quote,@"(?:ages?\s*(?:limit\s*)?(?:is|are|:)?\s*)(\d{1,2})\s*(?:to|[-–])\s*(\d{1,2})\s*years",RegexOptions.IgnoreCase))).Where(x=>x.m.Success).ToArray();
+  if(input.Age is null)Add("Age","MISSING","Enter your age at the notification's stated cutoff date; no date of birth is stored.",age.FirstOrDefault(),null);
+  else if(matches.Length!=1||input.NeedsRelaxation)Add("Age","REVIEW","Multiple/unsupported age rules or relaxation require manual review.",age.FirstOrDefault(),input.Age);
+  else{var m=matches[0];var pass=input.Age>=int.Parse(m.m.Groups[1].Value)&&input.Age<=int.Parse(m.m.Groups[2].Value);Add("Age",pass?"PASS":"FAIL","Compared only with this explicit base range; verify the cutoff date and post.",m.f,input.Age);}
+  var edu=fields.Where(f=>f.Name=="Qualification").ToArray();
+  if(string.IsNullOrWhiteSpace(input.Education))Add("Education","MISSING","Provide education level; do not include registration numbers or identifiers.",edu.FirstOrDefault(),null);
+  else if(edu.Length==1&&Regex.IsMatch(edu[0].Quote,@"bachelor(?:'?s)?\s+degree",RegexOptions.IgnoreCase)&&!Regex.IsMatch(edu[0].Quote,@"\bor\b|statistics|engineering|experience|marks|discipline|percent|%",RegexOptions.IgnoreCase)){var pass=input.Education=="BACHELOR_OR_HIGHER";Add("Education",pass?"PASS":"FAIL","Checks the stated general bachelor's-degree requirement only.",edu[0],input.Education);}
+  else Add("Education","REVIEW","Qualification alternatives, disciplines or unsupported wording need manual review.",edu.FirstOrDefault(),input.Education);
+  if(fields.Any(f=>f.Name is "Experience" or "Citizenship"))Add("Additional explicit conditions","REVIEW","Citizenship or experience wording is present and needs manual assessment; no sensitive attributes are inferred.",fields.First(f=>f.Name is "Experience" or "Citizenship"),null);
+  if(!input.ReviewedAllRules)Add("Other requirements","REVIEW","Confirm you reviewed the complete notification for citizenship, experience, category, post-specific conditions and cutoff dates. Section detection is not exhaustive.",null,null);
+  var overall=states.Contains("MISSING")?"INSUFFICIENT_INFORMATION":states.Contains("REVIEW")?"NEEDS_MANUAL_REVIEW":states.Contains("FAIL")?"LIKELY_NOT_ELIGIBLE":"LIKELY_ELIGIBLE";
+  return new{overall,results,notice="Conditional screening of the cited base rules, not an official eligibility decision. No applicant input is saved. Review the complete source and any corrigenda."};
+ }
+}

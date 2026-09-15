@@ -1,0 +1,47 @@
+name: spilton
+services:
+  database:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?required}
+      POSTGRES_USER: ${POSTGRES_USER:?required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes: ["database_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  api:
+    build:
+      context: .
+      dockerfile: backend/Spilton.Api/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: ${SPILTON_DATABASE_CONNECTION:?required}
+      Jwt__Secret: ${JWT_SECRET:?required}
+      Jwt__Issuer: ${JWT_ISSUER:?required}
+      Jwt__Audience: ${JWT_AUDIENCE:?required}
+      Cors__AllowedOrigins__0: ${APP_ORIGIN:?required}
+      Models__Default: ${MODEL_DEFAULT:?required}
+      Models__BaseUrl: ${MODEL_BASE_URL:-}
+      Models__ApiKey: ${MODEL_API_KEY:-}
+      Models__Model: ${MODEL_NAME:-}
+      Web__TavilyApiKey: ${WEB_TAVILY_API_KEY:-}
+    depends_on:
+      database: {condition: service_healthy}
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://api:8080
+      APP_ORIGIN: ${APP_ORIGIN:?required}
+      AUTH_COOKIE_SECURE: "true"
+    depends_on: [api]
+volumes:
+  database_data:
