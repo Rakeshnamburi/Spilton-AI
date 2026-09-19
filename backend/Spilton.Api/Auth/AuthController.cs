@@ -11,7 +11,7 @@ namespace Spilton.Api.Auth;
 public sealed record RegisterRequest(
     [Required, StringLength(100, MinimumLength = 1)] string Name,
     [Required, EmailAddress, StringLength(254)] string Email,
-    [Required, StringLength(128, MinimumLength = 12)] string Password);
+    [Required, StringLength(128, MinimumLength = 6)] string Password);
 public sealed record LoginRequest(
     [Required, EmailAddress, StringLength(254)] string Email,
     [Required, StringLength(128)] string Password);

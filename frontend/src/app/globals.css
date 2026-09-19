@@ -18,6 +18,8 @@ label { display: block; font-size: 13px; font-weight: 600; margin-top: 17px; }
 input { display: block; width: 100%; padding: 12px; border: 1px solid #ced8cf; border-radius: 8px; margin-top: 7px; background: #fcfdfb; color: var(--foreground); }
 .primary-button { display: block; width: 100%; text-align: center; text-decoration: none; padding: 12px; color: white; background: var(--accent); border: 0; border-radius: 8px; margin-top: 24px; font-weight: 600; }
 .primary-button:hover { background: #1d4c39; } .field-help, .auth-footer { color: #738078; font-size: 12px; }
+.secondary-button { display: block; width: 100%; text-align: center; padding: 12px; color: #365f4e; background: transparent; border: 1px solid #c8d5ce; border-radius: 8px; margin-top: 12px; font-weight: 600; }
+.secondary-button:disabled { opacity: .65; cursor: not-allowed; }
 .auth-switch { text-align: center; font-size: 13px; margin: 25px 0 0; } .auth-switch a { font-weight: 600; }
 .error-message { padding: 12px; font-size: 13px; background: #fff2f0; color: #94372d; border-radius: 8px; border: 1px solid #efd1cc; }
 .workspace { min-height: 100dvh; display: flex; }

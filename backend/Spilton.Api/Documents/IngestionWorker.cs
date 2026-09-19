@@ -12,7 +12,7 @@ public sealed class IngestionWorker(IServiceScopeFactory scopes,ILogger<Ingestio
                 var id=await db.Documents.Where(d=>d.Status=="UPLOADED"||d.Status=="DELETING"||(d.Status=="PROCESSING"&&d.UpdatedAt<DateTimeOffset.UtcNow.AddMinutes(-5))).OrderBy(d=>d.CreatedAt).Select(d=>(Guid?)d.Id).FirstOrDefaultAsync(stoppingToken);
                 if(id.HasValue){await Process(scope.ServiceProvider,id.Value,stoppingToken);continue;}
             }catch(OperationCanceledException)when(stoppingToken.IsCancellationRequested){break;}
-            catch(Exception ex){logger.LogWarning("Document worker: {ErrorType}",ex.GetType().Name);}
+            catch(Exception ex){logger.LogWarning("Document worker temporarily unavailable; retrying. ErrorCategory={ErrorCategory} ErrorType={ErrorType}",ex is DbUpdateException?"database":"worker",ex.GetType().Name);}
             await Task.Delay(1000,stoppingToken);
         }
     }

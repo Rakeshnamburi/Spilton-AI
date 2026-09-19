@@ -24,10 +24,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       <form method="post" onSubmit={submit} aria-busy={loading || !hydrated}><fieldset disabled={loading || !hydrated}>
         {register && <label>Full name<input name="name" autoComplete="name" required maxLength={100} placeholder="Your name" /></label>}
         <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} placeholder="you@example.com" /></label>
-        <label>Password<input name="password" type="password" autoComplete={register ? "new-password" : "current-password"} required minLength={register ? 12 : 1} maxLength={128} aria-describedby={register ? "password-help" : undefined} /></label>
-        {register && <p id="password-help" className="field-help">Use 12–128 characters. A longer passphrase works well.</p>}
+        <label>Password<input name="password" type="password" autoComplete={register ? "new-password" : "current-password"} required minLength={register ? 6 : 1} maxLength={128} aria-describedby={register ? "password-help" : undefined} /></label>
+        {register && <p id="password-help" className="field-help">Use 6–128 characters.</p>}
         {error && <p role="alert" className="error-message">{error}</p>}
         <button className="primary-button" type="submit">{loading ? (register ? "Creating account…" : "Signing in…") : (register ? "Create account" : "Sign in")}</button>
+        <button className="secondary-button" type="button" disabled title="Google sign-in will be enabled after the OAuth callback is deployed">Continue with Google (coming soon)</button>
       </fieldset></form>
       <p className="auth-switch">{register ? "Already have an account?" : "New to Spilton?"} <Link href={register ? "/login" : "/register"}>{register ? "Sign in" : "Create an account"}</Link></p>
     </section><p className="auth-footer">Spilton AI · Your preparation workspace</p>

@@ -53,7 +53,7 @@ public sealed class GenerationRecovery(IServiceScopeFactory scopes, ILogger<Gene
                 await db.Messages.Where(m => m.Status == "generating" && m.CreatedAt < cutoff)
                     .ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, "failed"), stoppingToken);
             } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch { logger.LogWarning("Generation recovery is waiting for the database/migration."); }
+            catch (Exception ex) { logger.LogWarning("Generation recovery waiting for database/migration. ErrorCategory={ErrorCategory} ErrorType={ErrorType}", "database", ex.GetType().Name); }
             try { await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken); }
             catch (OperationCanceledException) { break; }
         }

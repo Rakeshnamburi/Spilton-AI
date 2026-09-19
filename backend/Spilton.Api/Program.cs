@@ -149,9 +149,24 @@ if (app.Environment.IsDevelopment()) app.MapOpenApi();
 app.MapControllers();
 app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
 {
-    var ready = await db.Database.CanConnectAsync(ct);
-    return ready ? Results.Ok(new { status = "healthy", database = "connected" })
-        : Results.Problem(statusCode: 503, title: "Database unavailable");
+    try
+    {
+        if (!await db.Database.CanConnectAsync(ct))
+            return Results.Json(new { status = "degraded", database = "unavailable", errorCategory = "database" }, statusCode: 503);
+
+        var migrationsPending = (await db.Database.GetPendingMigrationsAsync(ct)).Any();
+        return migrationsPending
+            ? Results.Json(new { status = "degraded", database = "connected", migrations = "pending" }, statusCode: 503)
+            : Results.Ok(new { status = "healthy", database = "connected", migrations = "current" });
+    }
+    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+    {
+        return Results.Json(new { status = "degraded", database = "unknown", errorCategory = "canceled" }, statusCode: 503);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { status = "degraded", database = "unavailable", errorCategory = "database", errorType = ex.GetType().Name }, statusCode: 503);
+    }
 }).WithName("Health");
 app.Run();
 public partial class Program { }
