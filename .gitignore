@@ -18,5 +18,7 @@ local.env
 **/test-results/
 **/TestResults/
 *.log
+backend-error.txt
+**/government-test-error.txt
 .DS_Store
 .vs/

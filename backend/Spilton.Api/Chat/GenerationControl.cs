@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Spilton.Api.Data;
+using Spilton.Api.Infrastructure;
 namespace Spilton.Api.Chat;
 
 // Session advisory lock: excludes competing sends/renames/deletes across API processes.
@@ -44,18 +45,24 @@ public sealed class GenerationRecovery(IServiceScopeFactory scopes, ILogger<Gene
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var backoff = new WorkerBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(2));
         while (!stoppingToken.IsCancellationRequested)
         {
+            var delay = TimeSpan.FromSeconds(30);
             try {
                 using var scope = scopes.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var cutoff = DateTimeOffset.UtcNow.AddMinutes(-3);
                 await db.Messages.Where(m => m.Status == "generating" && m.CreatedAt < cutoff)
                     .ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, "failed"), stoppingToken);
+                backoff.Reset();
             } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch (Exception ex) { logger.LogWarning("Generation recovery waiting for database/migration. ErrorCategory={ErrorCategory} ErrorType={ErrorType}", "database", ex.GetType().Name); }
-            try { await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken); }
-            catch (OperationCanceledException) { break; }
+            catch (Exception ex) {
+                delay = backoff.NextFailureDelay();
+                logger.LogWarning("Generation recovery waiting for database/migration; retrying with backoff. ErrorCategory={ErrorCategory} ErrorType={ErrorType} ConsecutiveFailures={ConsecutiveFailures} RetryDelaySeconds={RetryDelaySeconds}", "database", ex.GetType().Name, backoff.ConsecutiveFailures, delay.TotalSeconds);
+            }
+            try { await Task.Delay(delay, stoppingToken); }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
         }
     }
 }

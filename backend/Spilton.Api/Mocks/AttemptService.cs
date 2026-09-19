@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Spilton.Api.Chat;
 using Spilton.Api.Data;
+using Spilton.Api.Infrastructure;
 namespace Spilton.Api.Mocks;
 public sealed class MockException(int status,string message):Exception(message){public int Status{get;}=status;}
 public sealed class AttemptService(AppDbContext db,TimeProvider clock)
@@ -57,5 +58,22 @@ public sealed class AttemptService(AppDbContext db,TimeProvider clock)
 }
 public sealed class AttemptExpiryWorker(IServiceScopeFactory scopes,ILogger<AttemptExpiryWorker> logger):BackgroundService
 {
- protected override async Task ExecuteAsync(CancellationToken stoppingToken){while(!stoppingToken.IsCancellationRequested){try{using var scope=scopes.CreateScope();var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();var service=scope.ServiceProvider.GetRequiredService<AttemptService>();var expired=await db.MockAttempts.AsNoTracking().Where(a=>a.Status=="ACTIVE"&&a.ExpiresAt<=service.Now).OrderBy(a=>a.ExpiresAt).Take(100).Select(a=>new{a.UserId,a.Id}).ToListAsync(stoppingToken);foreach(var a in expired)await service.Expire(a.UserId,a.Id,stoppingToken);}catch(OperationCanceledException)when(stoppingToken.IsCancellationRequested){break;}catch(Exception e){logger.LogWarning("Attempt expiry temporarily unavailable; retrying. ErrorCategory={ErrorCategory} ErrorType={ErrorType}",e is DbUpdateException?"database":"worker",e.GetType().Name);}try{await Task.Delay(5000,stoppingToken);}catch(OperationCanceledException){break;}}}
+ protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+ {
+  var backoff=new WorkerBackoff(TimeSpan.FromSeconds(5),TimeSpan.FromMinutes(2));
+  while(!stoppingToken.IsCancellationRequested)
+  {
+   var delay=TimeSpan.FromSeconds(5);
+   try
+   {
+    using var scope=scopes.CreateScope();var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();var service=scope.ServiceProvider.GetRequiredService<AttemptService>();
+    var expired=await db.MockAttempts.AsNoTracking().Where(a=>a.Status=="ACTIVE"&&a.ExpiresAt<=service.Now).OrderBy(a=>a.ExpiresAt).Take(100).Select(a=>new{a.UserId,a.Id}).ToListAsync(stoppingToken);
+    foreach(var a in expired)await service.Expire(a.UserId,a.Id,stoppingToken);
+    backoff.Reset();
+   }
+   catch(OperationCanceledException)when(stoppingToken.IsCancellationRequested){break;}
+   catch(Exception e){delay=backoff.NextFailureDelay();logger.LogWarning("Attempt expiry temporarily unavailable; retrying with backoff. ErrorCategory={ErrorCategory} ErrorType={ErrorType} ConsecutiveFailures={ConsecutiveFailures} RetryDelaySeconds={RetryDelaySeconds}",e is DbUpdateException?"database":"worker",e.GetType().Name,backoff.ConsecutiveFailures,delay.TotalSeconds);}
+   try{await Task.Delay(delay,stoppingToken);}catch(OperationCanceledException)when(stoppingToken.IsCancellationRequested){break;}
+  }
+ }
 }

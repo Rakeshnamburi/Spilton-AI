@@ -147,7 +147,7 @@ app.UseMiddleware<Spilton.Api.Security.ResourceBudgetMiddleware>();
 app.UseRateLimiter();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 app.MapControllers();
-app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
+app.MapGet("/api/health", async (AppDbContext db, IModelProviderResolver providers, IProviderHealth providerHealth, CancellationToken ct) =>
 {
     try
     {
@@ -155,9 +155,14 @@ app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
             return Results.Json(new { status = "degraded", database = "unavailable", errorCategory = "database" }, statusCode: 503);
 
         var migrationsPending = (await db.Database.GetPendingMigrationsAsync(ct)).Any();
-        return migrationsPending
-            ? Results.Json(new { status = "degraded", database = "connected", migrations = "pending" }, statusCode: 503)
-            : Results.Ok(new { status = "healthy", database = "connected", migrations = "current" });
+        if (migrationsPending)
+            return Results.Json(new { status = "degraded", database = "connected", migrations = "pending", provider = "not_checked" }, statusCode: 503);
+
+        var defaultProvider = providers.Available.FirstOrDefault(model => model.Id == providers.DefaultId);
+        var provider = defaultProvider is null ? "unconfigured" : providerHealth.Status(defaultProvider.Id).ToLowerInvariant();
+        return provider == "healthy"
+            ? Results.Ok(new { status = "healthy", database = "connected", migrations = "current", provider })
+            : Results.Ok(new { status = "degraded", database = "connected", migrations = "current", provider });
     }
     catch (OperationCanceledException) when (ct.IsCancellationRequested)
     {

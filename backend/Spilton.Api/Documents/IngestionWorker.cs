@@ -2,18 +2,22 @@ using Microsoft.EntityFrameworkCore;
 using Pgvector;
 using Spilton.Api.Chat;
 using Spilton.Api.Data;
+using Spilton.Api.Infrastructure;
 namespace Spilton.Api.Documents;
 public sealed class IngestionWorker(IServiceScopeFactory scopes,ILogger<IngestionWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var backoff = new WorkerBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
         while(!stoppingToken.IsCancellationRequested){
+            var delay = TimeSpan.FromSeconds(1);
             try{using var scope=scopes.CreateScope();var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var id=await db.Documents.Where(d=>d.Status=="UPLOADED"||d.Status=="DELETING"||(d.Status=="PROCESSING"&&d.UpdatedAt<DateTimeOffset.UtcNow.AddMinutes(-5))).OrderBy(d=>d.CreatedAt).Select(d=>(Guid?)d.Id).FirstOrDefaultAsync(stoppingToken);
-                if(id.HasValue){await Process(scope.ServiceProvider,id.Value,stoppingToken);continue;}
+                if(id.HasValue){await Process(scope.ServiceProvider,id.Value,stoppingToken);backoff.Reset();continue;}
+                backoff.Reset();
             }catch(OperationCanceledException)when(stoppingToken.IsCancellationRequested){break;}
-            catch(Exception ex){logger.LogWarning("Document worker temporarily unavailable; retrying. ErrorCategory={ErrorCategory} ErrorType={ErrorType}",ex is DbUpdateException?"database":"worker",ex.GetType().Name);}
-            await Task.Delay(1000,stoppingToken);
+            catch(Exception ex){delay=backoff.NextFailureDelay();logger.LogWarning("Document worker temporarily unavailable; retrying with backoff. ErrorCategory={ErrorCategory} ErrorType={ErrorType} ConsecutiveFailures={ConsecutiveFailures} RetryDelaySeconds={RetryDelaySeconds}",ex is DbUpdateException?"database":"worker",ex.GetType().Name,backoff.ConsecutiveFailures,delay.TotalSeconds);}
+            try{await Task.Delay(delay,stoppingToken);}catch(OperationCanceledException)when(stoppingToken.IsCancellationRequested){break;}
         }
     }
     private static async Task Process(IServiceProvider services,Guid id,CancellationToken ct)
