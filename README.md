@@ -6,6 +6,13 @@ Next.js + React + TypeScript + Tailwind frontend, .NET 10 ASP.NET Core API, Post
 
 The main experience is general-purpose chat. Government Exam Intelligence is an optional specialization and is excluded from unrelated coding/general context. Quick, Think, real-Web/document Research, and bounded local-tool Agent modes share the same conversation interface. See the honest [capability matrix](docs/capability-matrix.md). Vision, audio and arbitrary code execution remain unavailable. See [Web Intelligence](docs/web-intelligence.md) and [Advanced Research](docs/advanced-research.md).
 
+## Production addresses
+
+- Public application: **https://spiltonai.vercel.app**
+- API health check: **https://spilton-ai.onrender.com/api/health**
+
+Share the public application address with users. The Render address is the backend API and is not a website landing page. The older `spilton-ai.vercel.app` address redirects to the canonical public address.
+
 MVP operational guidance is in [release readiness](docs/release-readiness.md) and the infrastructure-neutral [deployment plan](docs/deployment.md). Phase 2 boundaries are documented in [Phase 2 architecture](docs/phase-2-architecture.md), [model routing](docs/model-routing.md), [multimodal](docs/multimodal.md), [coding workspace](docs/coding-workspace.md), and [production security](docs/production-security.md). Use the [final local verification checklist](docs/FINAL_LOCAL_VERIFICATION_CHECKLIST.md) after installing the complete .NET 10 SDK/runtime. No cloud or paid service was activated.
 
 ## Run again on this computer

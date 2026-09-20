@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
+import { BrainCircuit, FileText, GraduationCap, ShieldCheck } from "lucide-react";
 const subscribe = () => () => {};
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
@@ -19,8 +20,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     } catch (err) { setError(err instanceof Error ? err.message : "Please try again."); setLoading(false); }
   }
   return <main className="auth-page">
-    <Link href="/" className="brand"><span className="brand-mark">S</span> Spilton <span className="muted">AI</span></Link>
-    <section className="auth-card"><p className="eyebrow">YOUR WORKSPACE STARTS HERE</p><h1>{register ? "Create your account" : "Welcome back"}</h1><p className="muted">{register ? "A little space for your next big idea." : "Sign in to your Spilton workspace."}</p>
+    <section className="auth-showcase" aria-label="About Spilton AI"><Link href="/" className="brand auth-brand"><span className="brand-mark">S</span> Spilton <span>AI</span></Link><div className="auth-promise"><p className="eyebrow">YOUR INTELLIGENT WORKSPACE</p><h2>Learn, research and build with clarity.</h2><p>One secure workspace for focused conversations, grounded documents and exam preparation.</p><div className="auth-benefits"><div><BrainCircuit/><span><strong>Thoughtful assistance</strong><small>Quick answers and careful reasoning</small></span></div><div><FileText/><span><strong>Work with your documents</strong><small>Private uploads with cited answers</small></span></div><div><GraduationCap/><span><strong>Prepare with purpose</strong><small>Exam profiles, practice and progress</small></span></div></div></div><p className="auth-trust"><ShieldCheck size={17}/> Your credentials and API keys stay protected.</p></section>
+    <section className="auth-form-panel"><Link href="/" className="brand auth-mobile-brand"><span className="brand-mark">S</span> Spilton <span>AI</span></Link><section className="auth-card"><p className="eyebrow">{register ? "CREATE YOUR WORKSPACE" : "WELCOME BACK"}</p><h1>{register ? "Create your account" : "Sign in to Spilton"}</h1><p className="muted">{register ? "Start your personal AI and preparation workspace." : "Continue where you left off."}</p>
       <form method="post" onSubmit={submit} aria-busy={loading || !hydrated}><fieldset disabled={loading || !hydrated}>
         {register && <label>Full name<input name="name" autoComplete="name" required maxLength={100} placeholder="Your name" /></label>}
         <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} placeholder="you@example.com" /></label>
@@ -29,9 +30,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {register && <p id="password-help" className="field-help">Use 6–128 characters.</p>}
         {error && <p role="alert" className="error-message">{error}</p>}
         <button className="primary-button" type="submit">{loading ? (register ? "Creating account…" : "Signing in…") : (register ? "Create account" : "Sign in")}</button>
-        <button className="secondary-button" type="button" disabled title="Google sign-in will be enabled after the OAuth callback is deployed">Continue with Google (coming soon)</button>
+        <button className="secondary-button" type="button" disabled title="Google sign-in will be available after secure OAuth setup">Google sign-in · coming soon</button>
       </fieldset></form>
       <p className="auth-switch">{register ? "Already have an account?" : "New to Spilton?"} <Link href={register ? "/login" : "/register"}>{register ? "Sign in" : "Create an account"}</Link></p>
-    </section><p className="auth-footer">Spilton AI · Your preparation workspace</p>
+    </section><p className="auth-footer">Secure access · Spilton AI</p></section>
   </main>;
 }
