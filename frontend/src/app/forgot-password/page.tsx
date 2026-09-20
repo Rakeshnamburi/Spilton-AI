@@ -7,4 +7,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/forgot-password" },
 };
 
-export default function ForgotPasswordPage(){return <PasswordRecoveryForm/>;}
+export default async function ForgotPasswordPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
+  const { email = "" } = await searchParams;
+  return <PasswordRecoveryForm initialEmail={email.slice(0, 254)} />;
+}

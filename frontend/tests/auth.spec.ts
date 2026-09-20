@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 const email = `browser-${randomUUID()}@example.test`;
 const password = randomBytes(24).toString('base64url');
 test('unauthenticated protected page redirects to login', async ({ page }) => {
-  await page.goto('/chat'); await expect(page).toHaveURL(/\/login$/); await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await page.goto('/chat'); await expect(page).toHaveURL(/\/login$/); await expect(page.getByRole('heading', { name: 'Sign in to Spilton' })).toBeVisible();
 });
 test('real frontend registration, duplicate, invalid login, login, refresh, and logout', async ({ page, context }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
@@ -47,9 +47,9 @@ test('password recovery guides the user through email, OTP, and new password', a
   await page.route('**/api/auth/forgot-password', route => route.fulfill({ status: 202, json: { message: 'sent' } }));
   await page.route('**/api/auth/verify-reset', route => route.fulfill({ status: 200, json: { resetToken: 'A'.repeat(96) } }));
   await page.route('**/api/auth/reset-password', route => route.fulfill({ status: 204, body: '' }));
-  await page.goto('/login');await page.getByRole('link',{name:'Forgot password?'}).click();await expect(page).toHaveURL(/forgot-password/);
-  await page.getByLabel('Email').fill('member@example.test');await page.getByRole('button',{name:'Send reset code'}).click();
-  await page.getByLabel('Six-digit code').fill('123456');await page.getByRole('button',{name:'Verify code'}).click();
+  await page.goto('/login');await page.getByLabel('Email').fill('member@example.test');await page.getByRole('link',{name:'Forgot your password? Reset it with email OTP'}).click();await expect(page).toHaveURL(/forgot-password\?email=member%40example\.test/);
+  await expect(page.getByLabel('Registered email')).toHaveValue('member@example.test');await page.getByRole('button',{name:'Send OTP to my email'}).click();
+  await page.getByLabel('6-digit OTP').fill('123456');await page.getByRole('button',{name:'Verify OTP'}).click();
   await page.getByLabel('New password',{exact:true}).fill('new-password');await page.getByLabel('Confirm new password').fill('new-password');await page.getByRole('button',{name:'Save new password'}).click();
-  await expect(page.getByText('Password updated. Sign in with your new password.')).toBeVisible();await expect(page.getByRole('button',{name:'Go to sign in'})).toBeVisible();
+  await expect(page.getByText('Password updated. You can now sign in with your new password.')).toBeVisible();await expect(page.getByRole('button',{name:'Sign in with new password'})).toBeVisible();
 });

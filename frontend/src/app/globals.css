@@ -31,6 +31,13 @@ input { display: block; width: 100%; padding: 13px 14px; border: 1px solid #ced8
 .secondary-button:disabled { opacity: .65; cursor: not-allowed; }
 .auth-switch { text-align: center; font-size: 13px; margin: 25px 0 0; } .auth-switch a { font-weight: 600; }
 .error-message { padding: 12px; font-size: 13px; background: #fff2f0; color: #94372d; border-radius: 8px; border: 1px solid #efd1cc; }
+.password-help-link { margin-top:8px; text-align:right; } .password-help-link a { font-weight:700; color:#285d49; }
+.recovery-action { margin-top:12px; padding:14px; border:1px solid #cfe0d6; border-radius:11px; background:#f2f8f4; color:#234638; font-size:12px; }
+.recovery-action strong,.recovery-action span { display:block; } .recovery-action span { margin-top:4px; color:#64756c; } .recovery-action>div { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; } .recovery-action a { font-weight:700; }
+.recovery-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:24px 0 4px; padding:0; list-style:none; counter-reset:recovery; }
+.recovery-steps li { display:flex; align-items:center; gap:7px; color:#859189; font-size:11px; font-weight:700; } .recovery-steps li::before { counter-increment:recovery; content:counter(recovery); display:grid; place-items:center; width:24px; height:24px; flex:0 0 24px; border-radius:50%; background:#edf1ed; color:#718078; } .recovery-steps li.active { color:#285d49; } .recovery-steps li.active::before,.recovery-steps li.complete::before { background:#326d55; color:white; }
+.recovery-destination { margin:14px 0 0; padding:10px 12px; border-radius:9px; background:#f4f7f4; color:#526259; font-size:12px; word-break:break-word; }
+.link-button { width:100%; margin-top:10px; padding:4px; border:0; background:transparent; color:#285d49; font-weight:700; cursor:pointer; }
 .workspace { min-height: 100dvh; display: flex; }
 .sidebar { width: 260px; flex-shrink: 0; background: #f0f3ed; border-right: 1px solid var(--border); padding: 30px 22px 20px; display: flex; flex-direction: column; }
 .new-chat { margin-top: 35px; padding: 11px 14px; background: white; border: 1px solid #d0dacf; border-radius: 8px; text-align: left; font-weight: 500; display: flex; gap: 12px; align-items: center; }
