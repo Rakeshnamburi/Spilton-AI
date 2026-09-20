@@ -44,6 +44,7 @@ public static class AccountRecoveryModel
 
 public sealed class EmailSettings
 {
+    public string BrevoApiKey { get; set; } = "";
     public string Provider { get; set; } = "Disabled";
     public string SmtpHost { get; set; } = "";
     public int SmtpPort { get; set; } = 587;

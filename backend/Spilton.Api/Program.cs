@@ -59,7 +59,11 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<SessionService>();
 var emailSettings = builder.Configuration.GetSection("Email").Get<EmailSettings>() ?? new();
 builder.Services.AddSingleton(emailSettings);
-builder.Services.AddSingleton<IAccountEmailSender, SmtpAccountEmailSender>();
+builder.Services.AddHttpClient("brevo-email", client => client.Timeout = TimeSpan.FromSeconds(20))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+builder.Services.AddSingleton<IAccountEmailSender>(services => emailSettings.Provider.Equals("Brevo", StringComparison.OrdinalIgnoreCase)
+    ? new BrevoAccountEmailSender(emailSettings, services.GetRequiredService<IHttpClientFactory>())
+    : new SmtpAccountEmailSender(emailSettings));
 builder.Services.AddSingleton<Spilton.Api.Security.IResourceBudgetStore, Spilton.Api.Security.LocalResourceBudgetStore>();
 var models = builder.Configuration.GetSection("Models").Get<ModelSettings>() ?? new();
 builder.Services.AddSingleton(models);
