@@ -25,6 +25,11 @@ h1 { font-size: clamp(27px, 3vw, 36px); line-height: 1.2; letter-spacing: -1px; 
 .auth-card h1 { font-size: 32px; letter-spacing:-1.2px; } fieldset { padding: 0; border: 0; min-width: 0; } form { margin-top: 26px; }
 label { display: block; font-size: 13px; font-weight: 600; margin-top: 17px; }
 input { display: block; width: 100%; padding: 13px 14px; border: 1px solid #ced8cf; border-radius: 10px; margin-top: 7px; background: #fcfdfb; color: var(--foreground); transition:border-color .18s,box-shadow .18s; } input:focus { border-color:#568a72; box-shadow:0 0 0 4px #3f765c14; }
+.password-input-wrap { position:relative; margin-top:7px; }
+.password-input-wrap input { margin-top:0; padding-right:48px; }
+.password-visibility { position:absolute; right:7px; top:50%; transform:translateY(-50%); display:grid; place-items:center; width:36px; height:36px; padding:0; border:0; border-radius:8px; background:transparent; color:#64756c; }
+.password-visibility:hover { background:#edf3ef; color:#285d49; }
+.password-visibility svg { width:19px; height:19px; }
 .primary-button { display: block; width: 100%; text-align: center; text-decoration: none; padding: 13px; color: white; background: linear-gradient(135deg,#326d55,#214e3d); border: 0; border-radius: 10px; margin-top: 24px; font-weight: 700; box-shadow:0 9px 22px #275d4826; }
 .primary-button:hover { background: #1d4c39; } .field-help, .auth-footer { color: #738078; font-size: 12px; }
 .secondary-button { display: block; width: 100%; text-align: center; padding: 12px; color: #365f4e; background: #f7faf7; border: 1px solid #c8d5ce; border-radius: 10px; margin-top: 12px; font-weight: 600; }

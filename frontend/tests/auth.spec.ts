@@ -53,3 +53,14 @@ test('password recovery guides the user through email, OTP, and new password', a
   await page.getByLabel('New password',{exact:true}).fill('new-password');await page.getByLabel('Confirm new password').fill('new-password');await page.getByRole('button',{name:'Save new password'}).click();
   await expect(page.getByText('Password updated. You can now sign in with your new password.')).toBeVisible();await expect(page.getByRole('button',{name:'Sign in with new password'})).toBeVisible();
 });
+
+test('password fields can be shown and hidden', async ({ page }) => {
+  await page.goto('/login');
+  const password = page.getByLabel('Password', { exact: true });
+  await password.fill('visible-secret');
+  await expect(password).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Show password' }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: 'Hide password' }).click();
+  await expect(password).toHaveAttribute('type', 'password');
+});

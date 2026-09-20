@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
+import { PasswordField } from "@/components/password-field";
 
 type Stage = "email" | "code" | "password" | "done";
 
@@ -19,7 +20,7 @@ export function PasswordRecoveryForm({ initialEmail = "" }: { initialEmail?: str
   async function sendCode(value: string) {
     await apiRequest("/auth/forgot-password", { email: value });
     setEmail(value);
-    setNotice("A 6-digit OTP has been requested. Check your inbox and spam folder. It expires in 10 minutes.");
+    setNotice("If this email belongs to an active account, a 6-digit OTP has been sent. Check your inbox and spam folder. It expires in 10 minutes.");
     setStage("code");
   }
 
@@ -55,7 +56,7 @@ export function PasswordRecoveryForm({ initialEmail = "" }: { initialEmail?: str
     setError("");
     try {
       await sendCode(email);
-      setNotice("A new 6-digit OTP was requested. Only the newest code will work.");
+      setNotice("If this email belongs to an active account, a new OTP has been sent. Only the newest code will work.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Please try again.");
     } finally {
@@ -81,7 +82,7 @@ export function PasswordRecoveryForm({ initialEmail = "" }: { initialEmail?: str
       {stage !== "done" ? <form onSubmit={submit}><fieldset disabled={busy}>
         {stage === "email" && <label>Registered email<input name="email" type="email" autoComplete="email" required maxLength={254} defaultValue={initialEmail} placeholder="you@example.com" /></label>}
         {stage === "code" && <label>6-digit OTP<input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required placeholder="000000" /></label>}
-        {stage === "password" && <><label>New password<input name="password" type="password" autoComplete="new-password" minLength={6} maxLength={128} required /></label><label>Confirm new password<input name="confirmPassword" type="password" autoComplete="new-password" minLength={6} maxLength={128} required /></label></>}
+        {stage === "password" && <><PasswordField id="new-password" name="password" label="New password" autoComplete="new-password" minLength={6} /><PasswordField id="confirm-new-password" name="confirmPassword" label="Confirm new password" autoComplete="new-password" minLength={6} /></>}
         <button className="primary-button" type="submit">{busy ? "Please wait…" : stage === "email" ? "Send OTP to my email" : stage === "code" ? "Verify OTP" : "Save new password"}</button>
         {stage === "code" && <><button className="secondary-button" type="button" onClick={resendCode}>Resend OTP</button><button className="link-button" type="button" onClick={() => { setStage("email"); setNotice(""); setError(""); }}>Use a different email</button></>}
       </fieldset></form> : <button className="primary-button" onClick={() => router.replace("/login")}>Sign in with new password</button>}

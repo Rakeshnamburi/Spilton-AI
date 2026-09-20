@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api-client";
 import { BrainCircuit, FileText, GraduationCap, ShieldCheck } from "lucide-react";
+import { PasswordField } from "@/components/password-field";
 const subscribe = () => () => {};
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
@@ -30,7 +31,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       <form method="post" onSubmit={submit} aria-busy={loading || !hydrated}><fieldset disabled={loading || !hydrated}>
         {register && <label>Full name<input name="name" autoComplete="name" required maxLength={100} placeholder="Your name" /></label>}
         <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} placeholder="you@example.com" onChange={event => setEmailValue(event.currentTarget.value)} /></label>
-        <label>Password<input name="password" type="password" autoComplete={register ? "new-password" : "current-password"} required minLength={register ? 6 : 1} maxLength={128} aria-describedby={register ? "password-help" : undefined} /></label>
+        <PasswordField id="auth-password" name="password" label="Password" autoComplete={register ? "new-password" : "current-password"} minLength={register ? 6 : 1} describedBy={register ? "password-help" : undefined} />
         {!register && <p className="field-help password-help-link"><Link href={recoveryHref}>Forgot your password? Reset it with email OTP</Link></p>}
         {register && <p id="password-help" className="field-help">Use 6–128 characters.</p>}
         {error && <p role="alert" className="error-message">{error}</p>}
