@@ -2,6 +2,8 @@
 
 @media(max-width:500px){.sp-mode-select select{max-width:65px}.sp-model-select{max-width:120px}.sp-composer-tools{gap:6px}}
 
+.sp-modal label{display:block;font-size:11px;font-weight:600;color:#4b5870;margin:12px 0}.sp-modal label input{display:block;width:100%;margin-top:7px;padding:10px 12px;border:1px solid #dbe3f1;border-radius:8px;background:#fff;color:#24324a}.sp-modal label input:disabled{background:#f1f4f8;color:#7b8799}
+
 /* Spilton signature navigation: warm paper, graphite and terracotta. */
 .sp-sidebar{background:linear-gradient(165deg,#f4f0e7 0%,#ece5d9 100%);color:#272621;border-right:1px solid #ded5c6}
 .sp-brand{color:#24231f}.sp-brand b{color:#a64f32}.sp-brand small{color:#817a6f}

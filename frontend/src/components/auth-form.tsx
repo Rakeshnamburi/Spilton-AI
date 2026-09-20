@@ -25,6 +25,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {register && <label>Full name<input name="name" autoComplete="name" required maxLength={100} placeholder="Your name" /></label>}
         <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} placeholder="you@example.com" /></label>
         <label>Password<input name="password" type="password" autoComplete={register ? "new-password" : "current-password"} required minLength={register ? 6 : 1} maxLength={128} aria-describedby={register ? "password-help" : undefined} /></label>
+        {!register && <p className="field-help"><Link href="/forgot-password">Forgot password?</Link></p>}
         {register && <p id="password-help" className="field-help">Use 6–128 characters.</p>}
         {error && <p role="alert" className="error-message">{error}</p>}
         <button className="primary-button" type="submit">{loading ? (register ? "Creating account…" : "Signing in…") : (register ? "Create account" : "Sign in")}</button>

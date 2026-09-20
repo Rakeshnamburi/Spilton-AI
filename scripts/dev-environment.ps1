@@ -13,6 +13,9 @@ foreach ($entry in @{ MODEL_DEFAULT='Models__Default'; MODEL_BASE_URL='Models__B
     if ($settings.ContainsKey($entry.Key)) { [Environment]::SetEnvironmentVariable($entry.Value, $settings[$entry.Key], 'Process') }
 }
 if ($settings.ContainsKey('WEB_TAVILY_API_KEY')) { $env:Web__TavilyApiKey = $settings.WEB_TAVILY_API_KEY }
+foreach ($entry in @{EMAIL_PROVIDER='Email__Provider';EMAIL_SMTP_HOST='Email__SmtpHost';EMAIL_SMTP_PORT='Email__SmtpPort';EMAIL_SMTP_USERNAME='Email__SmtpUsername';EMAIL_SMTP_PASSWORD='Email__SmtpPassword';EMAIL_FROM_ADDRESS='Email__FromAddress';EMAIL_FROM_NAME='Email__FromName';EMAIL_ENABLE_SSL='Email__EnableSsl'}.GetEnumerator()) {
+    if ($settings.ContainsKey($entry.Key)) { [Environment]::SetEnvironmentVariable($entry.Value,$settings[$entry.Key],'Process') }
+}
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 $env:ASPNETCORE_URLS = 'http://localhost:5081'
 $env:DOTNET_CLI_HOME = Join-Path $projectRoot '.local/dotnet-home'

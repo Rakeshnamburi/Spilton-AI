@@ -2,7 +2,7 @@
 
 | Capability | Status | Evidence / boundary |
 | --- | --- | --- |
-| Authentication and PostgreSQL | WORKING | Backend integration suite and browser auth flow pass. |
+| Authentication and PostgreSQL | WORKING | Registration/login, rotating sessions, logout, editable profile, and single-use email OTP password recovery are implemented. SMTP delivery requires configuration. |
 | General AI chat | WORKING | Persistent SSE chat, configured provider abstraction and development-provider browser tests pass. |
 | Coding assistance | WORKING | Capability routing, bounded coding context, Markdown/code rendering and multi-turn chat are covered; code execution is unavailable. |
 | Think / reasoning | WORKING FOUNDATION | Same configured model with a careful-answer instruction; no hidden reasoning is displayed. |

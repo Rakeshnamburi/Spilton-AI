@@ -43,3 +43,13 @@ test('login loading state disables duplicate submission (controlled delay)', asy
 test('same-origin protection rejects cross-origin cookie mutation', async ({ request }) => {
   const response = await request.post('/api/auth/logout', { headers: { Origin: 'https://untrusted.example' }, data: {} }); expect(response.status()).toBe(403);
 });
+test('password recovery guides the user through email, OTP, and new password', async ({ page }) => {
+  await page.route('**/api/auth/forgot-password', route => route.fulfill({ status: 202, json: { message: 'sent' } }));
+  await page.route('**/api/auth/verify-reset', route => route.fulfill({ status: 200, json: { resetToken: 'A'.repeat(96) } }));
+  await page.route('**/api/auth/reset-password', route => route.fulfill({ status: 204, body: '' }));
+  await page.goto('/login');await page.getByRole('link',{name:'Forgot password?'}).click();await expect(page).toHaveURL(/forgot-password/);
+  await page.getByLabel('Email').fill('member@example.test');await page.getByRole('button',{name:'Send reset code'}).click();
+  await page.getByLabel('Six-digit code').fill('123456');await page.getByRole('button',{name:'Verify code'}).click();
+  await page.getByLabel('New password',{exact:true}).fill('new-password');await page.getByLabel('Confirm new password').fill('new-password');await page.getByRole('button',{name:'Save new password'}).click();
+  await expect(page.getByText('Password updated. Sign in with your new password.')).toBeVisible();await expect(page.getByRole('button',{name:'Go to sign in'})).toBeVisible();
+});

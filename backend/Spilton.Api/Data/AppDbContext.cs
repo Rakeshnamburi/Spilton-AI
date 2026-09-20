@@ -40,6 +40,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     protected override void OnModelCreating(ModelBuilder model)
     {
         Spilton.Api.Auth.SessionModel.Configure(model);
+        Spilton.Api.Auth.AccountRecoveryModel.Configure(model);
         PreparationModel.Configure(model);
         MockModel.Configure(model);
         var resources=model.Entity<GovernmentResource>();resources.HasOne(r=>r.User).WithMany().HasForeignKey(r=>r.UserId).OnDelete(DeleteBehavior.Cascade);resources.HasOne(r=>r.Space).WithMany().HasForeignKey(r=>r.SpaceId).OnDelete(DeleteBehavior.Restrict);resources.HasOne(r=>r.Exam).WithMany().HasForeignKey(r=>r.ExamId).OnDelete(DeleteBehavior.Restrict);resources.HasOne(r=>r.Document).WithMany().HasForeignKey(r=>r.DocumentId).OnDelete(DeleteBehavior.Cascade);resources.HasIndex(r=>new{r.UserId,r.SpaceId,r.Kind});model.Entity<NotificationField>().HasOne(f=>f.GovernmentResource).WithMany(r=>r.Fields).HasForeignKey(f=>f.GovernmentResourceId).OnDelete(DeleteBehavior.Cascade);

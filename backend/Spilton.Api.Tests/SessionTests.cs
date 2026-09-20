@@ -57,4 +57,28 @@ public sealed class SessionTests : IClassFixture<ChatFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/me")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/refresh", new { auth.RefreshToken })).StatusCode);
     }
+    [Fact]
+    public async Task Password_reset_code_is_single_use_and_revokes_existing_sessions()
+    {
+        using var client=factory.CreateClient();var email=$"reset-{Guid.NewGuid():N}@example.test";const string oldPassword="old-password";const string newPassword="new-password";
+        var registered=await client.PostAsJsonAsync("/api/auth/register",new{name="Reset user",email,password=oldPassword});
+        Assert.Equal(HttpStatusCode.Created,registered.StatusCode);var auth=(await registered.Content.ReadFromJsonAsync<AuthResponse>())!;
+        Assert.Equal(HttpStatusCode.Accepted,(await client.PostAsJsonAsync("/api/auth/forgot-password",new{email})).StatusCode);
+        var code=factory.Services.GetRequiredService<TestAccountEmailSender>().CodeFor(email);
+        var verified=await client.PostAsJsonAsync("/api/auth/verify-reset",new{email,code});Assert.Equal(HttpStatusCode.OK,verified.StatusCode);
+        var resetToken=(await verified.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("resetToken").GetString();
+        Assert.Equal(HttpStatusCode.NoContent,(await client.PostAsJsonAsync("/api/auth/reset-password",new{resetToken,newPassword})).StatusCode);
+        client.DefaultRequestHeaders.Authorization=new("Bearer",auth.AccessToken);Assert.Equal(HttpStatusCode.Unauthorized,(await client.GetAsync("/api/auth/me")).StatusCode);
+        client.DefaultRequestHeaders.Authorization=null;
+        Assert.Equal(HttpStatusCode.Unauthorized,(await client.PostAsJsonAsync("/api/auth/login",new{email,password=oldPassword})).StatusCode);
+        Assert.Equal(HttpStatusCode.OK,(await client.PostAsJsonAsync("/api/auth/login",new{email,password=newPassword})).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,(await client.PostAsJsonAsync("/api/auth/reset-password",new{resetToken,newPassword="another-password"})).StatusCode);
+    }
+    [Fact]
+    public async Task Signed_in_user_can_update_profile_name()
+    {
+        using var client=factory.CreateClient();var auth=await Register(client);client.DefaultRequestHeaders.Authorization=new("Bearer",auth.AccessToken);
+        var response=await client.PostAsJsonAsync("/api/auth/profile",new{name="Updated profile"});Assert.Equal(HttpStatusCode.OK,response.StatusCode);
+        var user=await response.Content.ReadFromJsonAsync<UserResponse>();Assert.Equal("Updated profile",user!.Name);Assert.Equal(auth.User.Email,user.Email);
+    }
 }

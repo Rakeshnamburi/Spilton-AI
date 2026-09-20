@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Spilton.Api.Auth;
 using Spilton.Api.Chat;
 
 namespace Spilton.Api.Tests;
@@ -20,8 +21,18 @@ public sealed class ChatFactory : WebApplicationFactory<Program>
             services.AddSingleton(new ModelSettings { DevelopmentEnabled = true, TimeoutSeconds = 5 });
             services.RemoveAll<IModelProviderResolver>();
             services.AddScoped<IModelProviderResolver, TestResolver>();
+            services.RemoveAll<IAccountEmailSender>();
+            services.AddSingleton<TestAccountEmailSender>();
+            services.AddSingleton<IAccountEmailSender>(s => s.GetRequiredService<TestAccountEmailSender>());
         });
     }
+}
+public sealed class TestAccountEmailSender : IAccountEmailSender
+{
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string,string> codes=new(StringComparer.OrdinalIgnoreCase);
+    public bool Available => true;
+    public Task SendPasswordResetCode(string email,string name,string code,CancellationToken ct){codes[email]=code;return Task.CompletedTask;}
+    public string CodeFor(string email)=>codes[email];
 }
 // Test-only fault injection: these providers cannot be selected in the running application.
 public sealed class TestResolver(ModelProviderFactory real) : IModelProviderResolver

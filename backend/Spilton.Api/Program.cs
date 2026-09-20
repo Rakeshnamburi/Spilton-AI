@@ -44,6 +44,9 @@ builder.Services.Configure<PasswordHasherOptions>(options => options.IterationCo
 builder.Services.AddSingleton<LoginTimingGuard>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<SessionService>();
+var emailSettings = builder.Configuration.GetSection("Email").Get<EmailSettings>() ?? new();
+builder.Services.AddSingleton(emailSettings);
+builder.Services.AddSingleton<IAccountEmailSender, SmtpAccountEmailSender>();
 builder.Services.AddSingleton<Spilton.Api.Security.IResourceBudgetStore, Spilton.Api.Security.LocalResourceBudgetStore>();
 var models = builder.Configuration.GetSection("Models").Get<ModelSettings>() ?? new();
 builder.Services.AddSingleton(models);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE, REFRESH_COOKIE, backendRequest, cookieOptions, getSession, isAllowedOrigin } from "@/lib/backend";
 export async function POST(request: NextRequest, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
-  if (!["login", "register", "logout", "logout-all", "refresh"].includes(action)) return NextResponse.json({ title: "Not found." }, { status: 404 });
+  if (!["login", "register", "logout", "logout-all", "refresh", "forgot-password", "verify-reset", "reset-password", "profile"].includes(action)) return NextResponse.json({ title: "Not found." }, { status: 404 });
   // Origin validation protects cookie mutations, including login CSRF.
   if (!isAllowedOrigin(request.headers.get("origin")))
     return NextResponse.json({ title: "Request origin is not allowed." }, { status: 403 });
@@ -49,13 +49,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     body = JSON.parse(raw);
   } catch { return NextResponse.json({ title: "Invalid JSON." }, { status: 400 }); }
   try {
-    const upstream = await backendRequest(`/auth/${action}`, { method: "POST", body: JSON.stringify(body) });
+    const token = request.cookies.get(AUTH_COOKIE)?.value;
+    if (action === "profile" && !token) return NextResponse.json({ title: "Please sign in." }, { status: 401 });
+    const upstream = await backendRequest(`/auth/${action}`, { method: "POST", body: JSON.stringify(body), headers: action === "profile" ? { Authorization: `Bearer ${token}` } : undefined });
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) return NextResponse.json({
       title: upstream.status >= 500 ? "Spilton is temporarily unavailable. Please try again shortly."
         : upstream.status === 429 ? "Too many attempts. Please wait a minute and try again." : data.title,
       errors: upstream.status < 500 ? data.errors : undefined,
     }, { status: upstream.status, headers: { "Cache-Control": "no-store" } });
+    if (["forgot-password", "verify-reset", "reset-password", "profile"].includes(action))
+      return new NextResponse(upstream.status === 204 ? null : JSON.stringify(data), { status: upstream.status, headers: upstream.status === 204 ? { "Cache-Control": "no-store" } : { "Content-Type": "application/json", "Cache-Control": "no-store" } });
     const response = NextResponse.json({ user: data.user }, { status: upstream.status });
     response.cookies.set(AUTH_COOKIE, data.accessToken, { ...cookieOptions, expires: new Date(data.expiresAt) });
     if (data.refreshToken) response.cookies.set(REFRESH_COOKIE, data.refreshToken, { ...cookieOptions, path: "/api/auth", expires: new Date(data.refreshExpiresAt) });

@@ -16,7 +16,8 @@ function dayGroup(date: string) {
   const today = new Date(); const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
   return new Date(date).toDateString() === today.toDateString() ? 'Today' : new Date(date).toDateString() === yesterday.toDateString() ? 'Yesterday' : 'Earlier';
 }
-export function Workspace({ user }: { user: User }) {
+export function Workspace({ user: initialUser }: { user: User }) {
+  const [user, setUser] = useState(initialUser);
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   const [history, setHistory] = useState<Conversation[]>([]);
   const [historyMore, setHistoryMore] = useState(false);
@@ -46,6 +47,9 @@ export function Workspace({ user }: { user: User }) {
   const [notice, setNotice] = useState('');
   const [sidebar, setSidebar] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [profileName, setProfileName] = useState(initialUser.name);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
   const [dialog, setDialog] = useState<{ kind: 'rename' | 'delete'; conversation: Conversation } | null>(null);
   const [title, setTitle] = useState('');
   const [mutating, setMutating] = useState(false);
@@ -60,6 +64,7 @@ export function Workspace({ user }: { user: User }) {
   const pending = generating || messages.some(m => m.status === 'generating');
   const lastAssistant = messages.findLast(m => m.role === 'ASSISTANT');
   function fail(e: unknown) { setError(e instanceof Error ? e.message : 'Something went wrong. Please retry.'); }
+  async function saveProfile(event:React.FormEvent<HTMLFormElement>){event.preventDefault();setProfileBusy(true);setProfileMessage('');try{const updated=await apiRequest<User>('/auth/profile',{name:profileName.trim()});setUser(updated);setProfileName(updated.name);setProfileMessage('Profile saved.');}catch(e){setProfileMessage(e instanceof Error?e.message:'Unable to save profile.');}finally{setProfileBusy(false);}}
   function upsert(c: Conversation) { setHistory(items => [c, ...items.filter(item => item.id !== c.id)].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))); }
   useEffect(() => {
     let alive = true;
@@ -216,7 +221,7 @@ export function Workspace({ user }: { user: User }) {
       </div>{!messages.length && <aside className="sp-insights"><div className="sp-insight-card"><span className="sp-mini-label">YOUR WORKSPACE</span><h2>A good place to begin.</h2><p>Your conversations stay with your account. Pick up where you left off, whenever you’re ready.</p><div className="sp-feature-line"><MessageSquare size={17}/><span>Saved conversations</span><span className="sp-enabled">Ready</span></div><div className="sp-feature-line"><Zap size={17}/><span>Quick mode</span><span className="sp-enabled">Ready</span></div></div><div className="sp-insight-card sp-coming-card"><div className="sp-card-icon"><BookOpen size={21}/></div><h2>Built for what’s next.</h2><p>Ask general questions, write code, learn a topic or work with your documents. Exam preparation is one specialized workspace.</p><span className="sp-coming-badge">Coming Soon</span></div><div className="sp-provider-card"><span className="sp-mini-label">CONNECTED MODEL</span><strong>{selectedModel?.label || 'No model configured'}</strong><p>{selectedModel?.isDevelopment ? 'Try streaming and saved chats with the development demo.' : 'Your selection is configured by the server administrator.'}</p><button onClick={() => setSettings(true)}>View model settings <ChevronRight size={14}/></button></div></aside>}</div>
     </main>
     {dialog && <div className="sp-modal-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="conversation-dialog-title" className="sp-modal"><h2 id="conversation-dialog-title">{dialog.kind === 'rename' ? 'Rename conversation' : 'Delete conversation?'}</h2>{dialog.kind === 'rename' ? <label>Conversation title<input autoFocus value={title} maxLength={100} onChange={e => setTitle(e.target.value)}/></label> : <p>“{dialog.conversation.title}” and its messages will be permanently deleted.</p>}<div className="sp-modal-actions"><button disabled={mutating} onClick={() => setDialog(null)}>Cancel</button><button className={dialog.kind === 'delete' ? 'danger' : 'confirm'} disabled={mutating || (dialog.kind === 'rename' && !title.trim())} onClick={saveDialog}>{mutating ? 'Saving…' : dialog.kind === 'delete' ? 'Delete conversation' : 'Save title'}</button></div></section></div>}
-    {settings && <div className="sp-modal-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="model-settings-title" className="sp-modal"><button className="sp-modal-close" aria-label="Close settings" onClick={() => setSettings(false)}><X size={19}/></button><span className="sp-mini-label">SPILTON SETTINGS</span><h2 id="model-settings-title">Your model connection</h2><p>Spilton Auto uses the configured default model. Only server-configured models appear in the selector.</p>{models.length ? models.map(m => <div className="sp-model-card" key={m.id}><strong>{m.label}</strong><small>{m.isDevelopment ? 'Scripted demo · no real AI connection' : 'Configured transport · access depends on provider credentials'}</small></div>) : <p>No model is configured.</p>}<p className="sp-settings-note">A server administrator can configure a compatible provider through the private environment file. API keys stay on the server and are never entered in this interface.</p><p className="sp-settings-note">Research uses selected documents when attached and current public web sources otherwise. Think uses the same model with a careful-answer instruction. Agent runs bounded read-only tools. Documents support PDF, TXT and DOCX.</p><button className="sp-settings-done" onClick={() => setSettings(false)}>Done</button></section></div>}
+    {settings && <div className="sp-modal-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="model-settings-title" className="sp-modal"><button className="sp-modal-close" aria-label="Close settings" onClick={() => setSettings(false)}><X size={19}/></button><span className="sp-mini-label">SPILTON SETTINGS</span><h2 id="model-settings-title">Your profile</h2><form onSubmit={saveProfile}><label>Display name<input value={profileName} onChange={e=>setProfileName(e.target.value)} required maxLength={100}/></label><label>Email<input value={user.email} disabled/></label>{profileMessage&&<p role="status" className="sp-settings-note">{profileMessage}</p>}<button className="sp-settings-done" disabled={profileBusy||!profileName.trim()}>{profileBusy?'Saving…':'Save profile'}</button></form><h2>Your model connection</h2><p>Spilton Auto uses the configured default model. Only server-configured models appear in the selector.</p>{models.length ? models.map(m => <div className="sp-model-card" key={m.id}><strong>{m.label}</strong><small>{m.isDevelopment ? 'Scripted demo · no real AI connection' : 'Configured transport · access depends on provider credentials'}</small></div>) : <p>No model is configured.</p>}<p className="sp-settings-note">API keys stay on the server and are never entered here.</p><button type="button" className="sp-settings-done" onClick={() => setSettings(false)}>Done</button></section></div>}
   </div>;
 }
 
