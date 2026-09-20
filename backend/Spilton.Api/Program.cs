@@ -14,6 +14,8 @@ using Pgvector.EntityFrameworkCore;
 using Spilton.Api.Preparation;
 using Spilton.Api.Government;
 using Spilton.Api.Web;
+using Amazon.Runtime;
+using Amazon.S3;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -31,7 +33,18 @@ var rag = builder.Configuration.GetSection("Rag").Get<RagSettings>() ?? new();
 builder.Services.AddSingleton(rag);
 builder.Services.AddSingleton<MiniLmTokenizer>();
 builder.Services.AddSingleton<IEmbeddingProvider,LocalEmbeddingProvider>();
-builder.Services.AddSingleton<IFileStorage,LocalFileStorage>();
+var storage = builder.Configuration.GetSection("Storage").Get<StorageSettings>() ?? new();
+if (!storage.IsConfigured || !storage.IsLocal && !storage.IsS3)
+    throw new InvalidOperationException("Storage:Provider must be Local or a fully configured private S3-compatible store.");
+builder.Services.AddSingleton(storage);
+if (storage.IsS3)
+{
+    builder.Services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(
+        new BasicAWSCredentials(storage.AccessKey, storage.SecretKey),
+        new AmazonS3Config { ServiceURL = storage.Endpoint, AuthenticationRegion = storage.Region, ForcePathStyle = storage.ForcePathStyle }));
+    builder.Services.AddSingleton<IFileStorage,S3FileStorage>();
+}
+else builder.Services.AddSingleton<IFileStorage,LocalFileStorage>();
 builder.Services.AddSingleton<DocumentExtractor>();builder.Services.AddSingleton<DocumentChunker>();
 builder.Services.AddScoped<RetrievalService>();builder.Services.AddScoped<RagContextBuilder>();
 builder.Services.AddScoped<ScopeGuard>();builder.Services.AddScoped<PreparationService>();builder.Services.AddScoped<PersonalizedContext>();
@@ -138,6 +151,12 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 var app = builder.Build();
+if (!app.Environment.IsDevelopment() && builder.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
+{
+    await using var migrationScope = app.Services.CreateAsyncScope();
+    var migrationDb = migrationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await migrationDb.Database.MigrateAsync();
+}
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseMiddleware<SecurityHeadersMiddleware>();

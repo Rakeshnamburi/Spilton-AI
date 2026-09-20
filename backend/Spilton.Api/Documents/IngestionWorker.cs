@@ -25,12 +25,12 @@ public sealed class IngestionWorker(IServiceScopeFactory scopes,ILogger<Ingestio
         var db=services.GetRequiredService<AppDbContext>();await using var gate=await ConversationLock.TryAcquire(db,id,ct);if(gate is null){await Task.Delay(500,ct);return;}
         var doc=await db.Documents.SingleOrDefaultAsync(d=>d.Id==id,ct);if(doc is null)return;
         var storage=services.GetRequiredService<IFileStorage>();
-        if(doc.Status=="DELETING"){storage.Delete(doc.StoredName);db.Documents.Remove(doc);await db.SaveChangesAsync(ct);return;}
+        if(doc.Status=="DELETING"){await storage.DeleteAsync(doc.StoredName,ct);db.Documents.Remove(doc);await db.SaveChangesAsync(ct);return;}
         if(doc.Status=="PROCESSING"){doc.Status="FAILED";doc.Error="Processing was interrupted. Delete and upload the document again.";await db.SaveChangesAsync(ct);return;}
         doc.Status="PROCESSING";doc.UpdatedAt=DateTimeOffset.UtcNow;await db.SaveChangesAsync(ct);
         try{
             using var timeout=CancellationTokenSource.CreateLinkedTokenSource(ct);timeout.CancelAfter(TimeSpan.FromMinutes(3));
-            using var input=storage.Open(doc.StoredName);
+            using var input=await storage.OpenReadAsync(doc.StoredName,timeout.Token);
             var extraction=services.GetRequiredService<DocumentExtractor>().Extract(input,Path.GetExtension(doc.StoredName),timeout.Token);
             var chunks=services.GetRequiredService<DocumentChunker>().Split(extraction);
             var embeddings=services.GetRequiredService<IEmbeddingProvider>();

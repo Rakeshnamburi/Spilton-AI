@@ -12,7 +12,7 @@ Every document operation scopes to the authenticated user. Retrieval additionall
 
 ## Local storage and deletion
 
-`IFileStorage` currently uses ignored `.local/documents/`. Stored names are generated GUIDs plus validated extensions. Original names are display metadata only. Names containing path separators, colon or control characters are rejected. Storage validates its own generated-name format as a second boundary. Files are not exposed through public static hosting.
+`IFileStorage` uses ignored `.local/documents/` by default and supports private S3-compatible storage in production. Stored names are generated GUIDs plus validated extensions. Original names are display metadata only. Names containing path separators, colon or control characters are rejected. Both providers validate the generated-name format as a second boundary. S3 writes use `If-None-Match: *` so an existing object is never overwritten. Reads are bounded to the same 5 MB upload limit. Files are not exposed through public static hosting.
 
 One `Documents` row represents one uploaded file and its processing result. A separate Files table is intentionally omitted to avoid duplicating one-to-one metadata. `DocumentChunks` has a required document FK and cascade delete. Existing Messages gain selected document IDs and citation-reference JSON. Source text is stored in chunks, not duplicated into new citation records.
 

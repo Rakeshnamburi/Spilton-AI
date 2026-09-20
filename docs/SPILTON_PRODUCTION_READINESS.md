@@ -12,7 +12,7 @@ This document records the safe local/demo posture and the work required before a
 | Sessions | WORKING | Hashed, rotating refresh credentials, family revocation and logout-all are implemented. |
 | Local rate limits | WORKING | Fixed-window process-local budgets. |
 | Distributed rate limits | PARTIAL | `IDistributedRateLimitStore` is an extension point; configure Redis/another atomic store before multiple API replicas. |
-| Durable object storage | PARTIAL | Local storage is protected; an S3-compatible provider remains an integration point. |
+| Durable object storage | CONFIGURATION REQUIRED | Private S3-compatible storage is implemented with bounded reads, conditional creates and configurable path-style endpoints. Production credentials and a bucket are still external. |
 | Malware scanning | UNAVAILABLE | `MALWARE_SCANNER_NOT_CONFIGURED`; uploads still undergo type, size, signature and ownership validation. |
 | Vision/audio | UNAVAILABLE | No configured provider currently supports these modalities. |
 | Isolated code execution | UNAVAILABLE | Never execute generated code directly on the host. |

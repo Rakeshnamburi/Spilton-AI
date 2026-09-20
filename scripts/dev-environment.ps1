@@ -16,6 +16,9 @@ if ($settings.ContainsKey('WEB_TAVILY_API_KEY')) { $env:Web__TavilyApiKey = $set
 foreach ($entry in @{EMAIL_PROVIDER='Email__Provider';EMAIL_SMTP_HOST='Email__SmtpHost';EMAIL_SMTP_PORT='Email__SmtpPort';EMAIL_SMTP_USERNAME='Email__SmtpUsername';EMAIL_SMTP_PASSWORD='Email__SmtpPassword';EMAIL_FROM_ADDRESS='Email__FromAddress';EMAIL_FROM_NAME='Email__FromName';EMAIL_ENABLE_SSL='Email__EnableSsl'}.GetEnumerator()) {
     if ($settings.ContainsKey($entry.Key)) { [Environment]::SetEnvironmentVariable($entry.Value,$settings[$entry.Key],'Process') }
 }
+foreach ($entry in @{STORAGE_PROVIDER='Storage__Provider';STORAGE_ENDPOINT='Storage__Endpoint';STORAGE_REGION='Storage__Region';STORAGE_BUCKET='Storage__Bucket';STORAGE_ACCESS_KEY='Storage__AccessKey';STORAGE_SECRET_KEY='Storage__SecretKey';STORAGE_KEY_PREFIX='Storage__KeyPrefix';STORAGE_FORCE_PATH_STYLE='Storage__ForcePathStyle'}.GetEnumerator()) {
+    if ($settings.ContainsKey($entry.Key)) { [Environment]::SetEnvironmentVariable($entry.Value,$settings[$entry.Key],'Process') }
+}
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 $env:ASPNETCORE_URLS = 'http://localhost:5081'
 $env:DOTNET_CLI_HOME = Join-Path $projectRoot '.local/dotnet-home'

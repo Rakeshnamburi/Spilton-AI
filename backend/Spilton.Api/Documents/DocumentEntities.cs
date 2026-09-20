@@ -53,4 +53,21 @@ public sealed class RagSettings
     public const long MaxFileBytes = 5 * 1024 * 1024;
     public const int MaxChunks = 500;
 }
+public sealed class StorageSettings
+{
+    public string Provider { get; set; } = "Local";
+    public string Endpoint { get; set; } = "";
+    public string Region { get; set; } = "us-east-1";
+    public string Bucket { get; set; } = "";
+    public string AccessKey { get; set; } = "";
+    public string SecretKey { get; set; } = "";
+    public string KeyPrefix { get; set; } = "documents";
+    public bool ForcePathStyle { get; set; } = true;
+
+    public bool IsS3 => Provider.Equals("S3", StringComparison.OrdinalIgnoreCase);
+    public bool IsLocal => Provider.Equals("Local", StringComparison.OrdinalIgnoreCase);
+    public bool IsConfigured => IsLocal || IsS3 && Uri.TryCreate(Endpoint, UriKind.Absolute, out var endpoint)
+        && endpoint.Scheme == Uri.UriSchemeHttps && !string.IsNullOrWhiteSpace(Bucket)
+        && !string.IsNullOrWhiteSpace(AccessKey) && !string.IsNullOrWhiteSpace(SecretKey);
+}
 public sealed class DocumentException(string message) : Exception(message);

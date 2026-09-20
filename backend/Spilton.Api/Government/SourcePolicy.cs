@@ -9,7 +9,7 @@ public sealed class SourcePolicy(GovernmentSettings settings,IFileStorage storag
  public async Task Apply(GovernmentResource r,Document? doc,CancellationToken ct){
   r.SourceType=doc is null?"UNVERIFIED":"USER_UPLOADED";r.Verification="UNVERIFIED_CONTENT";
   if(doc is null)return;
-  await using var file=storage.Open(doc.StoredName);r.SourceHash=Convert.ToHexString(await SHA256.HashDataAsync(file,ct));
+  await using var file=await storage.OpenReadAsync(doc.StoredName,ct);r.SourceHash=Convert.ToHexString(await SHA256.HashDataAsync(file,ct));
   if(string.IsNullOrEmpty(settings.VerifiedSourcesPath)||!File.Exists(settings.VerifiedSourcesPath))return;
   var entries=JsonSerializer.Deserialize<VerifiedSource[]>(await File.ReadAllTextAsync(settings.VerifiedSourcesPath,ct),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??[];
   var verified=entries.FirstOrDefault(e=>e.Url==r.SourceUrl&&e.Sha256.Equals(r.SourceHash,StringComparison.OrdinalIgnoreCase)&&e.SourceType is "OFFICIAL" or "TRUSTED_SECONDARY");

@@ -29,7 +29,7 @@ public sealed class DocumentsController(AppDbContext db,IFileStorage storage,Ret
         using var input=file.OpenReadStream();var signature=new byte[5];var read=await input.ReadAsync(signature,ct);input.Position=0;
         if((extension==".pdf"&&(read<5||System.Text.Encoding.ASCII.GetString(signature)!="%PDF-"))||(extension==".docx"&&(read<2||signature[0]!=80||signature[1]!=75)))return Problem(statusCode:415,title:"The file content does not match its format.");
         var doc=new Document{UserId=UserId,SpaceId=spaceId,OriginalName=name,StoredName=Guid.NewGuid().ToString("N")+extension,ContentType=mime,Size=file.Length,Category=category};
-        try{await storage.SaveAsync(doc.StoredName,input,ct);db.Documents.Add(doc);await db.SaveChangesAsync(ct);}catch{storage.Delete(doc.StoredName);throw;}
+        try{await storage.SaveAsync(doc.StoredName,input,ct);db.Documents.Add(doc);await db.SaveChangesAsync(ct);}catch{try{await storage.DeleteAsync(doc.StoredName,CancellationToken.None);}catch{}throw;}
         return Accepted($"/api/documents/{doc.Id}",DocumentDto.From(doc));
     }
     [HttpGet]public async Task<IActionResult> List([FromQuery]Guid? spaceId,CancellationToken ct){if(!await scopes.Allowed(UserId,spaceId,false,ct))return NotFound();return Ok(new{items=(await Owned.AsNoTracking().Where(d=>d.SpaceId==spaceId).OrderByDescending(d=>d.CreatedAt).ToListAsync(ct)).Select(DocumentDto.From)});}
@@ -40,7 +40,7 @@ public sealed class DocumentsController(AppDbContext db,IFileStorage storage,Ret
     [HttpDelete("{id:guid}")]public async Task<IActionResult> Delete(Guid id,CancellationToken ct){if(!await Owned.AnyAsync(d=>d.Id==id,ct))return NotFound();await using var gate=await ConversationLock.TryAcquire(db,id,ct);if(gate is null)return Problem(statusCode:409,title:"This document is processing. Retry when processing finishes.");var doc=await Owned.SingleOrDefaultAsync(d=>d.Id==id,ct);if(doc is null)return NotFound();
         // Tombstone commits first: retrieval cannot see a half-deleted document. Worker retries disk failures.
         doc.Status="DELETING";await db.SaveChangesAsync(ct);await db.DocumentChunks.Where(c=>c.DocumentId==id).ExecuteDeleteAsync(ct);
-        try{storage.Delete(doc.StoredName);db.Documents.Remove(doc);await db.SaveChangesAsync(ct);}catch(IOException){return Accepted();}return NoContent();}
+        try{await storage.DeleteAsync(doc.StoredName,ct);db.Documents.Remove(doc);await db.SaveChangesAsync(ct);}catch(IOException){return Accepted();}return NoContent();}
     [HttpPost("diagnostics"),EnableRateLimiting("chat")]
     public async Task<IActionResult> Diagnostics(RetrievalRequest request,CancellationToken ct){if(!environment.IsDevelopment()||!settings.Diagnostics)return NotFound();try{return Ok(await retrieval.Search(UserId,request.DocumentIds,request.Question,ct,request.SpaceId));}catch(DocumentException ex){return Problem(statusCode:400,title:ex.Message);}}
 }

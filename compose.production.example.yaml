@@ -31,6 +31,14 @@ services:
       Models__ApiKey: ${MODEL_API_KEY:-}
       Models__Model: ${MODEL_NAME:-}
       Web__TavilyApiKey: ${WEB_TAVILY_API_KEY:-}
+      Storage__Provider: ${STORAGE_PROVIDER:-Local}
+      Storage__Endpoint: ${STORAGE_ENDPOINT:-}
+      Storage__Region: ${STORAGE_REGION:-us-east-1}
+      Storage__Bucket: ${STORAGE_BUCKET:-}
+      Storage__AccessKey: ${STORAGE_ACCESS_KEY:-}
+      Storage__SecretKey: ${STORAGE_SECRET_KEY:-}
+      Storage__KeyPrefix: ${STORAGE_KEY_PREFIX:-documents}
+      Storage__ForcePathStyle: ${STORAGE_FORCE_PATH_STYLE:-true}
     depends_on:
       database: {condition: service_healthy}
   web:
