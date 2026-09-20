@@ -1,4 +1,4 @@
-export type User = { id: string; name: string; email: string; roles: string[] };
+export type User = { id: string; name: string; email: string; roles: string[]; emailVerifiedAt?: string | null };
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }

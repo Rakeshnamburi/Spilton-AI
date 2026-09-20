@@ -32,6 +32,7 @@ public sealed class TestAccountEmailSender : IAccountEmailSender
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string,string> codes=new(StringComparer.OrdinalIgnoreCase);
     public bool Available => true;
     public Task SendPasswordResetCode(string email,string name,string code,CancellationToken ct){codes[email]=code;return Task.CompletedTask;}
+    public Task SendEmailVerificationCode(string email,string name,string code,CancellationToken ct){codes[email]=code;return Task.CompletedTask;}
     public string CodeFor(string email)=>codes[email];
 }
 // Test-only fault injection: these providers cannot be selected in the running application.

@@ -81,4 +81,16 @@ public sealed class SessionTests : IClassFixture<ChatFactory>
         var response=await client.PostAsJsonAsync("/api/auth/profile",new{name="Updated profile"});Assert.Equal(HttpStatusCode.OK,response.StatusCode);
         var user=await response.Content.ReadFromJsonAsync<UserResponse>();Assert.Equal("Updated profile",user!.Name);Assert.Equal(auth.User.Email,user.Email);
     }
+    [Fact]
+    public async Task Signed_in_user_can_verify_email_with_single_use_code()
+    {
+        using var client=factory.CreateClient();var auth=await Register(client);client.DefaultRequestHeaders.Authorization=new("Bearer",auth.AccessToken);
+        Assert.Null(auth.User.EmailVerifiedAt);
+        Assert.Equal(HttpStatusCode.Accepted,(await client.PostAsJsonAsync("/api/auth/request-email-verification",new{})).StatusCode);
+        var code=factory.Services.GetRequiredService<TestAccountEmailSender>().CodeFor(auth.User.Email);
+        Assert.Equal(HttpStatusCode.BadRequest,(await client.PostAsJsonAsync("/api/auth/verify-email",new{code="000000"})).StatusCode);
+        var response=await client.PostAsJsonAsync("/api/auth/verify-email",new{code});Assert.Equal(HttpStatusCode.OK,response.StatusCode);
+        var user=await response.Content.ReadFromJsonAsync<UserResponse>();Assert.NotNull(user!.EmailVerifiedAt);
+        var again=await client.PostAsJsonAsync("/api/auth/verify-email",new{code});Assert.Equal(HttpStatusCode.OK,again.StatusCode);
+    }
 }

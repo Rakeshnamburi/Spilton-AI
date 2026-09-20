@@ -14,9 +14,9 @@ public sealed class JwtSettings
     public string Audience { get; set; } = "";
     public int ExpiryMinutes { get; set; } = 30;
 }
-public sealed record UserResponse(Guid Id, string Name, string Email, string[] Roles)
+public sealed record UserResponse(Guid Id, string Name, string Email, string[] Roles, DateTimeOffset? EmailVerifiedAt)
 {
-    public static UserResponse From(User user) => new(user.Id, user.Name, user.Email, user.Roles.Select(r => r.Name).ToArray());
+    public static UserResponse From(User user) => new(user.Id, user.Name, user.Email, user.Roles.Select(r => r.Name).ToArray(), user.EmailVerifiedAt);
 }
 public sealed record AuthResponse(string AccessToken, DateTimeOffset ExpiresAt, UserResponse User)
 {

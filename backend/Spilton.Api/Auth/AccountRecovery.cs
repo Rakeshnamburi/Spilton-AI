@@ -58,6 +58,7 @@ public interface IAccountEmailSender
 {
     bool Available { get; }
     Task SendPasswordResetCode(string email, string name, string code, CancellationToken ct);
+    Task SendEmailVerificationCode(string email, string name, string code, CancellationToken ct);
 }
 
 public sealed class SmtpAccountEmailSender(EmailSettings settings) : IAccountEmailSender
@@ -86,18 +87,54 @@ public sealed class SmtpAccountEmailSender(EmailSettings settings) : IAccountEma
         };
         await client.SendMailAsync(message, ct);
     }
+    public async Task SendEmailVerificationCode(string email, string name, string code, CancellationToken ct)
+    {
+        if (!Available) throw new InvalidOperationException("Email provider is not configured.");
+        using var message = new MailMessage { From = new MailAddress(settings.FromAddress, settings.FromName), Subject = "Verify your Spilton email", Body = $"Hello {name},\n\nYour Spilton email verification code is: {code}\n\nThis code expires in 10 minutes and can be used once.", IsBodyHtml = false };
+        message.To.Add(email);
+        using var client = new SmtpClient(settings.SmtpHost, settings.SmtpPort) { EnableSsl = settings.EnableSsl, DeliveryMethod = SmtpDeliveryMethod.Network, UseDefaultCredentials = string.IsNullOrWhiteSpace(settings.SmtpUsername), Credentials = string.IsNullOrWhiteSpace(settings.SmtpUsername) ? CredentialCache.DefaultNetworkCredentials : new NetworkCredential(settings.SmtpUsername, settings.SmtpPassword) };
+        await client.SendMailAsync(message, ct);
+    }
 }
 
 public sealed record ForgotPasswordRequest([Required, EmailAddress, StringLength(254)] string Email);
 public sealed record VerifyResetCodeRequest([Required, EmailAddress, StringLength(254)] string Email, [Required, RegularExpression("^[0-9]{6}$")] string Code);
 public sealed record ResetPasswordRequest([Required, StringLength(128, MinimumLength = 64)] string ResetToken, [Required, StringLength(128, MinimumLength = 6)] string NewPassword);
 public sealed record UpdateProfileRequest([Required, StringLength(100, MinimumLength = 1)] string Name);
+public sealed record VerifyEmailRequest([Required, RegularExpression("^[0-9]{6}$")] string Code);
 
 [ApiController, Route("api/auth"), ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AccountRecoveryController(AppDbContext db, IPasswordHasher<User> hasher, IAccountEmailSender email, TimeProvider clock, ILogger<AccountRecoveryController> logger) : ControllerBase
 {
     private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     private static string CodeHash(string salt, string code) => Hash(salt + ":" + code);
+    private Guid UserId => Guid.Parse(User.FindFirst("sub")!.Value);
+
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "User"), HttpPost("request-email-verification"), EnableRateLimiting("auth")]
+    public async Task<IActionResult> RequestEmailVerification(CancellationToken ct)
+    {
+        if (!email.Available) return Problem(statusCode: 503, title: "Verification email is not configured yet.");
+        var user = await db.Users.SingleAsync(x => x.Id == UserId && x.IsActive, ct);
+        if (user.EmailVerifiedAt is not null) return NoContent();
+        var now = clock.GetUtcNow();
+        await db.Set<AccountChallenge>().Where(x => x.UserId == user.Id && x.Purpose == "EMAIL_VERIFICATION" && x.UsedAt == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), ct);
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6"); var salt = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+        db.Add(new AccountChallenge { UserId = user.Id, Purpose = "EMAIL_VERIFICATION", CodeSalt = salt, CodeHash = CodeHash(salt, code), CreatedAt = now, ExpiresAt = now.AddMinutes(10) }); await db.SaveChangesAsync(ct);
+        try { await email.SendEmailVerificationCode(user.Email, user.Name, code, ct); }
+        catch (Exception ex) { await db.Set<AccountChallenge>().Where(x => x.UserId == user.Id && x.Purpose == "EMAIL_VERIFICATION" && x.UsedAt == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), CancellationToken.None); logger.LogWarning("Email verification delivery failed. ErrorType={ErrorType}", ex.GetType().Name); return Problem(statusCode: 503, title: "The verification email could not be sent. Please try again shortly."); }
+        return Accepted(new { message = "A six-digit verification code has been sent." });
+    }
+
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "User"), HttpPost("verify-email"), EnableRateLimiting("auth")]
+    public async Task<ActionResult<UserResponse>> VerifyEmail(VerifyEmailRequest request, CancellationToken ct)
+    {
+        var now=clock.GetUtcNow();var user=await db.Users.Include(x=>x.Roles).SingleAsync(x=>x.Id==UserId&&x.IsActive,ct);
+        if(user.EmailVerifiedAt is not null)return Ok(UserResponse.From(user));
+        var challenge=await db.Set<AccountChallenge>().Where(x=>x.UserId==user.Id&&x.Purpose=="EMAIL_VERIFICATION"&&x.UsedAt==null&&x.ExpiresAt>now).OrderByDescending(x=>x.CreatedAt).FirstOrDefaultAsync(ct);
+        if(challenge is null||challenge.FailedAttempts>=5||!CryptographicOperations.FixedTimeEquals(Convert.FromHexString(challenge.CodeHash),Convert.FromHexString(CodeHash(challenge.CodeSalt,request.Code)))){if(challenge is not null){challenge.FailedAttempts++;if(challenge.FailedAttempts>=5)challenge.UsedAt=now;await db.SaveChangesAsync(ct);}return Problem(statusCode:400,title:"The code is invalid or has expired.");}
+        var consumed=await db.Set<AccountChallenge>().Where(x=>x.Id==challenge.Id&&x.UsedAt==null&&x.ExpiresAt>now).ExecuteUpdateAsync(s=>s.SetProperty(x=>x.UsedAt,now).SetProperty(x=>x.VerifiedAt,now),ct);if(consumed!=1)return Problem(statusCode:400,title:"The code is invalid or has expired.");
+        user.EmailVerifiedAt=now;await db.SaveChangesAsync(ct);return Ok(UserResponse.From(user));
+    }
 
     [HttpPost("forgot-password"), EnableRateLimiting("auth")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request, CancellationToken ct)
@@ -169,8 +206,7 @@ public sealed class AccountRecoveryController(AppDbContext db, IPasswordHasher<U
     public async Task<ActionResult<UserResponse>> UpdateProfile(UpdateProfileRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Name)) return BadRequest(new { title = "A name is required." });
-        var id = Guid.Parse(User.FindFirst("sub")!.Value);
-        var user = await db.Users.Include(x => x.Roles).SingleAsync(x => x.Id == id && x.IsActive, ct);
+        var user = await db.Users.Include(x => x.Roles).SingleAsync(x => x.Id == UserId && x.IsActive, ct);
         user.Name = request.Name.Trim(); await db.SaveChangesAsync(ct);
         return Ok(UserResponse.From(user));
     }

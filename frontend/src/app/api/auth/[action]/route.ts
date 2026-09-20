@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE, REFRESH_COOKIE, backendRequest, cookieOptions, getSession, isAllowedOrigin } from "@/lib/backend";
 export async function POST(request: NextRequest, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
-  if (!["login", "register", "logout", "logout-all", "refresh", "forgot-password", "verify-reset", "reset-password", "profile"].includes(action)) return NextResponse.json({ title: "Not found." }, { status: 404 });
+  if (!["login", "register", "logout", "logout-all", "refresh", "forgot-password", "verify-reset", "reset-password", "profile", "request-email-verification", "verify-email"].includes(action)) return NextResponse.json({ title: "Not found." }, { status: 404 });
   // Origin validation protects cookie mutations, including login CSRF.
   if (!isAllowedOrigin(request.headers.get("origin")))
     return NextResponse.json({ title: "Request origin is not allowed." }, { status: 403 });
