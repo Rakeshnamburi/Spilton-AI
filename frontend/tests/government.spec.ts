@@ -13,7 +13,7 @@ test('manual notification upload, cited eligibility, library filters and mobile'
   await page.getByLabel('Email').fill(`gov-ui-${Date.now()}@example.test`);
   await page.getByLabel('Password',{exact:true}).fill('Test-password-'+Date.now()+'!');
   await page.getByRole('button',{name:'Create account',exact:true}).click();
-  await expect(page).toHaveURL(/chat/);
+  await expect(page).toHaveURL(/verify-email/); await page.getByRole('link',{name:'Continue and verify later'}).click(); await expect(page).toHaveURL(/chat/);
   await openGovernment(page);
 
   const fileName='notification-ui.txt';

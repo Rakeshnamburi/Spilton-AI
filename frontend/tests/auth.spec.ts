@@ -9,7 +9,7 @@ test('real frontend registration, duplicate, invalid login, login, refresh, and 
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/register'); await page.getByLabel('Full name').fill('Day One'); await page.getByLabel('Email').fill(email); await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
-  await expect(page).toHaveURL(/\/chat$/); await expect(page.getByText('Welcome to Spilton, Day.', { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/verify-email/); await page.getByRole('link',{name:'Continue and verify later'}).click(); await expect(page).toHaveURL(/\/chat$/); await expect(page.getByText('Welcome to Spilton, Day.', { exact: true })).toBeVisible();
   const cookie = (await context.cookies()).find(c => c.name === 'spilton_session'); expect(cookie?.httpOnly).toBe(true); expect(cookie?.sameSite).toBe('Lax');
   expect(await page.evaluate(() => localStorage.length)).toBe(0); expect(await page.evaluate(() => document.cookie)).not.toContain('spilton_session');
   await page.reload(); await expect(page.getByText('Welcome to Spilton, Day.', { exact: true })).toBeVisible();
@@ -26,7 +26,7 @@ test('real frontend registration, duplicate, invalid login, login, refresh, and 
   await page.goto('/register'); await page.getByLabel('Full name').fill('Duplicate'); await page.getByLabel('Email').fill(email); await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Create account', exact: true }).click(); await expect(page.locator('.error-message')).toContainText('already exists');
   await page.goto('/login'); await page.getByLabel('Email').fill(email); await page.getByLabel('Password', { exact: true }).fill('wrong-password-123');
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click(); await expect(page.locator('.error-message')).toContainText('Invalid email or password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click(); await expect(page.locator('.error-message')).toContainText('The email or password you entered is incorrect');
   await page.getByLabel('Password', { exact: true }).fill(password); await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/chat$/); await expect(page.getByText('Welcome to Spilton, Day.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Open sidebar', exact: true }).click();
@@ -50,7 +50,7 @@ test('password recovery guides the user through email, OTP, and new password', a
   await page.goto('/login');await page.getByLabel('Email').fill('member@example.test');await page.getByRole('link',{name:'Forgot your password? Reset it with email OTP'}).click();await expect(page).toHaveURL(/forgot-password\?email=member%40example\.test/);
   await expect(page.getByLabel('Registered email')).toHaveValue('member@example.test');await page.getByRole('button',{name:'Send OTP to my email'}).click();
   await page.getByLabel('6-digit OTP').fill('123456');await page.getByRole('button',{name:'Verify OTP'}).click();
-  await page.getByLabel('New password',{exact:true}).fill('new-password');await page.getByLabel('Confirm new password').fill('new-password');await page.getByRole('button',{name:'Save new password'}).click();
+  await page.getByLabel('New password',{exact:true}).fill('new-password');await page.getByLabel('Confirm new password',{exact:true}).fill('new-password');await page.getByRole('button',{name:'Save new password'}).click();
   await expect(page.getByText('Password updated. You can now sign in with your new password.')).toBeVisible();await expect(page.getByRole('button',{name:'Sign in with new password'})).toBeVisible();
 });
 

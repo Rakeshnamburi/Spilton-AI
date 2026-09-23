@@ -18,6 +18,18 @@ public sealed class SessionTests : IClassFixture<ChatFactory>
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
     }
     [Fact]
+    public async Task Registration_sends_a_verification_code_without_a_separate_request()
+    {
+        using var client = factory.CreateClient();
+        var auth = await Register(client);
+        var code = factory.Services.GetRequiredService<TestAccountEmailSender>().CodeFor(auth.User.Email);
+        Assert.Matches("^[0-9]{6}$", code);
+        client.DefaultRequestHeaders.Authorization = new("Bearer", auth.AccessToken);
+        var response = await client.PostAsJsonAsync("/api/auth/verify-email", new { code });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull((await response.Content.ReadFromJsonAsync<UserResponse>())!.EmailVerifiedAt);
+    }
+    [Fact]
     public async Task Refresh_rotates_hash_only_and_reuse_revokes_family_and_access()
     {
         using var client = factory.CreateClient();

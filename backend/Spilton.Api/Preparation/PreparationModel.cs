@@ -23,7 +23,15 @@ public static class PreparationModel
         progress.ToTable(t=>t.HasCheckConstraint("CK_Progress_Counts","\"QuestionsAttempted\" >= 0 AND \"QuestionsCorrect\" >= 0 AND \"QuestionsCorrect\" <= \"QuestionsAttempted\""));
         var items=model.Entity<StudyPlanItem>();items.HasOne(i=>i.StudyPlan).WithMany(p=>p.Items).HasForeignKey(i=>i.StudyPlanId).OnDelete(DeleteBehavior.Cascade);items.HasOne(i=>i.Topic).WithMany().HasForeignKey(i=>i.TopicId).OnDelete(DeleteBehavior.Restrict);items.HasIndex(i=>new{i.StudyPlanId,i.Date});
         // Curated starter taxonomy, not an official or complete current syllabus.
-        foreach(var (name,family) in new[]{("SSC CGL","SSC"),("SSC CHSL","SSC"),("RRB NTPC","RRB"),("Banking Preparation","Banking"),("APPSC Preparation","APPSC"),("UPSC Preparation","UPSC")}){
+        foreach(var (name,family) in new[]{("SSC CGL","SSC"),("SSC CHSL","SSC"),("RRB NTPC","RRB"),("Banking Preparation","Banking"),("APPSC Preparation","APPSC"),("UPSC Preparation","UPSC"),
+            ("SSC MTS","SSC Other"),("SSC GD","SSC Other"),("SSC CPO","SSC Other"),("SSC JE","SSC Other"),
+            ("RRB Group D","RRB"),("RRB ALP","RRB"),("RRB JE","RRB"),
+            ("IBPS PO","Banking"),("IBPS Clerk","Banking"),("IBPS RRB","Banking"),("SBI PO","Banking"),("SBI Clerk","Banking"),("RBI Grade B","Banking"),
+            ("UPSC Civil Services","UPSC"),("UPSC NDA","Defence"),("UPSC CDS","Defence"),("UPSC CAPF","Defence"),("AFCAT","Defence"),
+            ("APPSC Group 1","State PSC"),("APPSC Group 2","State PSC"),("Telangana Group 1","State PSC"),("Telangana Group 2","State PSC"),
+            ("TNPSC","State PSC"),("Karnataka PSC","State PSC"),("Kerala PSC","State PSC"),("MPSC","State PSC"),("UPPSC","State PSC"),("BPSC","State PSC"),("MPPSC","State PSC"),("RPSC","State PSC"),
+            ("WBPSC","State PSC"),("OPSC","State PSC"),("GPSC","State PSC"),("Punjab PSC","State PSC"),("Haryana PSC","State PSC"),("Assam PSC","State PSC"),
+            ("CTET","Teaching"),("UGC NET","Teaching"),("CSIR NET","Teaching"),("State TET","Teaching")}){
             var exam=Id(name);model.Entity<Exam>().HasData(new Exam{Id=exam,Name=name,Family=family});
             foreach(var stageName in family=="SSC"?new[]{"Tier 1","Tier 2"}:new[]{"General preparation"}){
                 var stage=Id(name+stageName);model.Entity<ExamStage>().HasData(new ExamStage{Id=stage,ExamId=exam,Name=stageName});

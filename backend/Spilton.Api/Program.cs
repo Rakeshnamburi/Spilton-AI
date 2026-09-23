@@ -59,6 +59,7 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<SessionService>();
 var emailSettings = builder.Configuration.GetSection("Email").Get<EmailSettings>() ?? new();
 builder.Services.AddSingleton(emailSettings);
+builder.Services.AddScoped<VerificationDelivery>();
 builder.Services.AddHttpClient("brevo-email", client => client.Timeout = TimeSpan.FromSeconds(20))
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 builder.Services.AddSingleton<IAccountEmailSender>(services => emailSettings.Provider.Equals("Brevo", StringComparison.OrdinalIgnoreCase)

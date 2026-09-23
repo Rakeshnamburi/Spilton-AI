@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 async function register(page: Page) {
   const credentials = { email: `chat-ui-${randomUUID()}@example.test`, password: randomBytes(24).toString('base64url') };
   await page.goto('/register'); await page.getByLabel('Full name').fill('Spilton Explorer'); await page.getByLabel('Email').fill(credentials.email); await page.getByLabel('Password', { exact: true }).fill(credentials.password);
-  await page.getByRole('button', { name: 'Create account', exact: true }).click(); await expect(page).toHaveURL(/\/chat$/);
+  await page.getByRole('button', { name: 'Create account', exact: true }).click(); await expect(page).toHaveURL(/verify-email/); await page.getByRole('link',{name:'Continue and verify later'}).click(); await expect(page).toHaveURL(/\/chat$/);
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeEnabled(); await page.getByRole('combobox',{name:'Model',exact:true}).selectOption('development'); return credentials;
 }
 async function send(page: Page, content: string) {

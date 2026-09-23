@@ -10,6 +10,11 @@ h1 { font-size: clamp(27px, 3vw, 36px); line-height: 1.2; letter-spacing: -1px; 
 .muted { color: #69766d; }
 .brand { display: flex; align-items: center; gap: 7px; font-size: 22px; font-weight: 600; text-decoration: none; color: var(--foreground); letter-spacing: -.6px; }
 .brand-mark { display: grid; place-items: center; width: 32px; height: 32px; margin-right: 4px; background: var(--accent); border-radius: 10px; color: white; font-family: Georgia, serif; font-style: italic; }
+.auth-brand,.auth-mobile-brand { font-size:0; width:220px; min-height:54px; display:block; background:url('/spilton-ai-logo.svg') center/contain no-repeat; }
+.auth-brand .brand-mark,.auth-mobile-brand .brand-mark { display:none; }
+.sp-brand { background:url('/spilton-ai-logo.svg') left center/210px auto no-repeat; min-height:62px; }
+.sp-brand>div,.sp-brand>span:first-child { visibility:hidden; }
+.mock-brand>a,.prep>header>a,.auth-single-page>.auth-card>.brand { display:block; width:210px; min-height:52px; font-size:0; background:url('/spilton-ai-logo.svg') left center/contain no-repeat; }
 .eyebrow { font-size: 10px; font-weight: 600; letter-spacing: 1.7px; color: #7a887f; }
 .auth-page { min-height: 100dvh; display: grid; grid-template-columns: minmax(360px, .92fr) minmax(480px, 1.08fr); background: #f7f8f4; }
 .auth-showcase { position: relative; overflow: hidden; min-height: 100dvh; padding: clamp(32px,5vw,72px); display: flex; flex-direction: column; color: #f8fbf8; background: radial-gradient(circle at 15% 15%,#4e896e 0,transparent 35%),radial-gradient(circle at 85% 80%,#173d30 0,transparent 45%),linear-gradient(145deg,#285d49,#102a21); }

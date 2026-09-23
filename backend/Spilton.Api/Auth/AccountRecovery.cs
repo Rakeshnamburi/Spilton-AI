@@ -105,7 +105,7 @@ public sealed record UpdateProfileRequest([Required, StringLength(100, MinimumLe
 public sealed record VerifyEmailRequest([Required, RegularExpression("^[0-9]{6}$")] string Code);
 
 [ApiController, Route("api/auth"), ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class AccountRecoveryController(AppDbContext db, IPasswordHasher<User> hasher, IAccountEmailSender email, TimeProvider clock, ILogger<AccountRecoveryController> logger) : ControllerBase
+public sealed class AccountRecoveryController(AppDbContext db, IPasswordHasher<User> hasher, IAccountEmailSender email, TimeProvider clock, ILogger<AccountRecoveryController> logger, VerificationDelivery verification) : ControllerBase
 {
     private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     private static string CodeHash(string salt, string code) => Hash(salt + ":" + code);
@@ -114,15 +114,11 @@ public sealed class AccountRecoveryController(AppDbContext db, IPasswordHasher<U
     [Microsoft.AspNetCore.Authorization.Authorize(Roles = "User"), HttpPost("request-email-verification"), EnableRateLimiting("auth")]
     public async Task<IActionResult> RequestEmailVerification(CancellationToken ct)
     {
-        if (!email.Available) return Problem(statusCode: 503, title: "Verification email is not configured yet.");
+        if (!email.Available) return StatusCode(503, new { code = "EMAIL_NOT_CONFIGURED", title = "Email delivery is not configured. Please contact support." });
         var user = await db.Users.SingleAsync(x => x.Id == UserId && x.IsActive, ct);
         if (user.EmailVerifiedAt is not null) return NoContent();
-        var now = clock.GetUtcNow();
-        await db.Set<AccountChallenge>().Where(x => x.UserId == user.Id && x.Purpose == "EMAIL_VERIFICATION" && x.UsedAt == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), ct);
-        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6"); var salt = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-        db.Add(new AccountChallenge { UserId = user.Id, Purpose = "EMAIL_VERIFICATION", CodeSalt = salt, CodeHash = CodeHash(salt, code), CreatedAt = now, ExpiresAt = now.AddMinutes(10) }); await db.SaveChangesAsync(ct);
-        try { await email.SendEmailVerificationCode(user.Email, user.Name, code, ct); }
-        catch (Exception ex) { await db.Set<AccountChallenge>().Where(x => x.UserId == user.Id && x.Purpose == "EMAIL_VERIFICATION" && x.UsedAt == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), CancellationToken.None); logger.LogWarning("Email verification delivery failed. ErrorType={ErrorType}", ex.GetType().Name); return Problem(statusCode: 503, title: "The verification email could not be sent. Please try again shortly."); }
+        if (!await verification.Send(user, ct))
+            return StatusCode(503, new { code = "EMAIL_DELIVERY_FAILED", title = "The email service could not send your verification code. Please try again later or contact support." });
         return Accepted(new { message = "A six-digit verification code has been sent." });
     }
 
@@ -140,7 +136,7 @@ public sealed class AccountRecoveryController(AppDbContext db, IPasswordHasher<U
     [HttpPost("forgot-password"), EnableRateLimiting("auth")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request, CancellationToken ct)
     {
-        if (!email.Available) return Problem(statusCode: 503, title: "Password recovery email is not configured yet.");
+        if (!email.Available) return StatusCode(503, new { code = "EMAIL_NOT_CONFIGURED", title = "Password recovery email is not configured. Please contact support." });
         var normalized = request.Email.Trim().ToUpperInvariant();
         var user = await db.Users.SingleOrDefaultAsync(x => x.NormalizedEmail == normalized && x.IsActive, ct);
         if (user is not null)
@@ -150,14 +146,15 @@ public sealed class AccountRecoveryController(AppDbContext db, IPasswordHasher<U
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), ct);
             var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
             var salt = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-            db.Add(new AccountChallenge { UserId = user.Id, CodeSalt = salt, CodeHash = CodeHash(salt, code), CreatedAt = now, ExpiresAt = now.AddMinutes(10) });
+            var challenge = new AccountChallenge { UserId = user.Id, CodeSalt = salt, CodeHash = CodeHash(salt, code), CreatedAt = now, ExpiresAt = now.AddMinutes(10) };
+            db.Add(challenge);
             await db.SaveChangesAsync(ct);
             try { await email.SendPasswordResetCode(user.Email, user.Name, code, ct); }
             catch (Exception ex)
             {
-                await db.Set<AccountChallenge>().Where(x => x.UserId == user.Id && x.UsedAt == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), CancellationToken.None);
-                logger.LogWarning("Password recovery delivery failed. ErrorType={ErrorType}", ex.GetType().Name);
-                return Problem(statusCode: 503, title: "The recovery email could not be sent. Please try again shortly.");
+                await db.Set<AccountChallenge>().Where(x => x.Id == challenge.Id && x.UsedAt == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), CancellationToken.None);
+                logger.LogWarning("Password recovery delivery failed. ErrorType={ErrorType} ProviderStatus={ProviderStatus}", ex.GetType().Name, (ex as HttpRequestException)?.StatusCode);
+                return StatusCode(503, new { code = "EMAIL_DELIVERY_FAILED", title = "The email service could not send your OTP. Please try again later or contact support." });
             }
         }
         return Accepted(new { message = "If an active account uses that email, a six-digit reset code has been sent." });

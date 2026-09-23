@@ -8,7 +8,7 @@ export async function apiRequest<T>(path: string, body?: unknown): Promise<T> {
     response = await fetch(`/api${path}`, {
       method: body === undefined ? "GET" : "POST", headers: { "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
-      credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(15000),
+      credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(100000),
     });
   } catch { throw new ApiError("Unable to connect. Please check your connection and try again.", 0); }
   const data = await response.json().catch(() => ({}));

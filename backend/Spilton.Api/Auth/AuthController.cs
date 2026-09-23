@@ -17,7 +17,7 @@ public sealed record LoginRequest(
     [Required, StringLength(128)] string Password);
 
 [ApiController, Route("api/auth")]
-public sealed class AuthController(AppDbContext db, IPasswordHasher<User> hasher, SessionService sessions, LoginTimingGuard timing) : ControllerBase
+public sealed class AuthController(AppDbContext db, IPasswordHasher<User> hasher, SessionService sessions, LoginTimingGuard timing, VerificationDelivery verification) : ControllerBase
 {
     [HttpPost("register"), EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken ct)
@@ -35,6 +35,7 @@ public sealed class AuthController(AppDbContext db, IPasswordHasher<User> hasher
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         { return Problem(statusCode: 409, title: "An account with this email already exists."); }
         Response.Headers.CacheControl = "no-store";
+        await verification.Send(user, ct);
         return StatusCode(201, await sessions.Create(user, ct));
     }
     [HttpPost("login"), EnableRateLimiting("auth")]

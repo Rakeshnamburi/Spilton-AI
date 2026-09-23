@@ -20,7 +20,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     setEmailValue(email);
     try {
       await apiRequest(`/auth/${mode}`, { ...(register ? { name: String(data.get("name")).trim() } : {}), email, password: data.get("password") });
-      let destination="/chat";const returnTo=new URLSearchParams(window.location.search).get("returnTo");if(returnTo){try{const target=new URL(returnTo,window.location.origin);if(target.origin===window.location.origin&&target.pathname==="/mocks")destination=target.pathname+target.search;}catch{}}router.replace(destination); router.refresh();
+      let destination=register?"/verify-email":"/chat";const returnTo=new URLSearchParams(window.location.search).get("returnTo");if(returnTo&&!register){try{const target=new URL(returnTo,window.location.origin);if(target.origin===window.location.origin&&target.pathname==="/mocks")destination=target.pathname+target.search;}catch{}}router.replace(destination); router.refresh();
     } catch (err) { setError(err instanceof Error ? err.message : "Please try again."); setLoading(false); }
   }
   const showRecovery = Boolean(error) && (error.toLowerCase().includes("already exists") || error.toLowerCase().includes("invalid email or password"));
@@ -34,7 +34,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         <PasswordField id="auth-password" name="password" label="Password" autoComplete={register ? "new-password" : "current-password"} minLength={register ? 6 : 1} describedBy={register ? "password-help" : undefined} />
         {!register && <p className="field-help password-help-link"><Link href={recoveryHref}>Forgot your password? Reset it with email OTP</Link></p>}
         {register && <p id="password-help" className="field-help">Use 6–128 characters.</p>}
-        {error && <p role="alert" className="error-message">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="error-message"><strong>Unable to continue.</strong><br/>{error}</p>}
         {showRecovery && <div className="recovery-action"><strong>{register ? "Already registered?" : "Cannot remember the password?"}</strong><span>We can send a secure 6-digit code to this email.</span><div><Link href={recoveryHref}>Reset password with OTP</Link>{register && <Link href="/login">Go to sign in</Link>}</div></div>}
         <button className="primary-button" type="submit">{loading ? (register ? "Creating account…" : "Signing in…") : (register ? "Create account" : "Sign in")}</button>
         <button className="secondary-button" type="button" disabled title="Google sign-in will be available after secure OAuth setup">Google sign-in · coming soon</button>

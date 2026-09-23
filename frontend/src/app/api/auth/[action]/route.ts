@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE, REFRESH_COOKIE, backendRequest, cookieOptions, getSession, isAllowedOrigin } from "@/lib/backend";
+export const maxDuration = 120;
 export async function POST(request: NextRequest, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
   if (!["login", "register", "logout", "logout-all", "refresh", "forgot-password", "verify-reset", "reset-password", "profile", "request-email-verification", "verify-email"].includes(action)) return NextResponse.json({ title: "Not found." }, { status: 404 });
@@ -50,15 +51,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   } catch { return NextResponse.json({ title: "Invalid JSON." }, { status: 400 }); }
   try {
     const token = request.cookies.get(AUTH_COOKIE)?.value;
-    if (action === "profile" && !token) return NextResponse.json({ title: "Please sign in." }, { status: 401 });
-    const upstream = await backendRequest(`/auth/${action}`, { method: "POST", body: JSON.stringify(body), headers: action === "profile" ? { Authorization: `Bearer ${token}` } : undefined });
+    const authenticated = ["profile", "request-email-verification", "verify-email"].includes(action);
+    if (authenticated && !token) return NextResponse.json({ title: "Please sign in." }, { status: 401 });
+    const upstream = await backendRequest(`/auth/${action}`, { method: "POST", body: JSON.stringify(body), signal: AbortSignal.timeout(90000), headers: authenticated ? { Authorization: `Bearer ${token}` } : undefined });
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) return NextResponse.json({
-      title: upstream.status >= 500 ? "Spilton is temporarily unavailable. Please try again shortly."
+      title: action === "login" && upstream.status === 401
+        ? "The email or password you entered is incorrect. Please check your details and try again."
+        : upstream.status >= 500 ? (data.code?.startsWith("EMAIL_") ? data.title : "Spilton is temporarily unavailable. Please try again shortly.")
         : upstream.status === 429 ? "Too many attempts. Please wait a minute and try again." : data.title,
       errors: upstream.status < 500 ? data.errors : undefined,
     }, { status: upstream.status, headers: { "Cache-Control": "no-store" } });
-    if (["forgot-password", "verify-reset", "reset-password", "profile"].includes(action))
+    if (["forgot-password", "verify-reset", "reset-password", "profile", "request-email-verification", "verify-email"].includes(action))
       return new NextResponse(upstream.status === 204 ? null : JSON.stringify(data), { status: upstream.status, headers: upstream.status === 204 ? { "Cache-Control": "no-store" } : { "Content-Type": "application/json", "Cache-Control": "no-store" } });
     const response = NextResponse.json({ user: data.user }, { status: upstream.status });
     response.cookies.set(AUTH_COOKIE, data.accessToken, { ...cookieOptions, expires: new Date(data.expiresAt) });

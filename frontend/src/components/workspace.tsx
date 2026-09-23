@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
+import {sessionFetch} from '@/lib/session-fetch';
 import { Plus, Search, Home, BookOpen, ListChecks, Files, Bot, Settings, MessageSquare, Menu, X, Send, Square, Paperclip, Globe, Zap, Pencil, Trash2, RotateCcw, Sparkles, ChevronRight } from 'lucide-react';
 import { apiRequest, type User } from '@/lib/api-client';
 import { chatRequest, streamChat, type Conversation, type ConversationDetail, type ChatMessage, type Model } from '@/lib/chat-client';
@@ -26,17 +27,18 @@ export function Workspace({ user: initialUser }: { user: User }) {
   const [model, setModel] = useState('auto');const [mode,setMode]=useState('quick');
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [documentError, setDocumentError] = useState('');
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const attachment = useRef<HTMLInputElement>(null);
   const selectAfterReady = useRef<string | null>(null);
   async function refreshDocuments() {
-    const list = await chatRequest<{items:UploadedDocument[]}>(scoped('/documents')); setDocuments(list.items);
+    const list = await chatRequest<{items:UploadedDocument[]}>(scoped('/documents')); setDocuments(list.items);setDocumentError('');
     const waiting = list.items.find(d=>d.id===selectAfterReady.current);
     if(waiting?.status==='READY'){setSelectedDocuments(ids=>ids.includes(waiting.id)?ids:[...ids.slice(0,4),waiting.id]);selectAfterReady.current=null;}
   }
   useEffect(()=>{let alive=true;async function refresh(){try{const list=await chatRequest<{items:UploadedDocument[]}>(scoped('/documents'));if(!alive)return;setDocuments(list.items);const ready=list.items.find(d=>d.id===selectAfterReady.current&&d.status==='READY');if(ready){setSelectedDocuments(ids=>ids.includes(ready.id)?ids:[...ids.slice(0,4),ready.id]);selectAfterReady.current=null;}}catch{/* Explicit upload/list errors remain actionable. */}}void refresh();const timer=setInterval(refresh,2500);return()=>{alive=false;clearInterval(timer);};},[]);
-  async function uploadDocument(file:File){if(file.size>5*1024*1024){setError('Files must be 5 MB or smaller.');return;}if(!/\.(pdf|txt|docx)$/i.test(file.name)){setError('Supported formats are PDF, TXT and DOCX.');return;}setUploading(true);setError('');try{const form=new FormData();form.append('file',file);if(spaceId())form.append('spaceId',spaceId()!);const response=await fetch('/api/chat/documents',{method:'POST',body:form,signal:AbortSignal.timeout(60000)});const data=await response.json();if(!response.ok)throw new Error(data.title||'Upload failed.');selectAfterReady.current=data.id;await refreshDocuments();setNotice('File uploaded. Processing must finish before it can be used for chat.');setDocumentsOpen(true);}catch(e){fail(e);}finally{setUploading(false);}}
+  async function uploadDocument(file:File){if(file.size>5*1024*1024){setDocumentError('Files must be 5 MB or smaller.');return;}if(!/\.(pdf|txt|docx)$/i.test(file.name)){setDocumentError('Supported formats are PDF, TXT and DOCX.');return;}setUploading(true);setDocumentError('');try{const form=new FormData();form.append('file',file);if(spaceId())form.append('spaceId',spaceId()!);const response=await sessionFetch('/api/chat/documents',{method:'POST',body:form,signal:AbortSignal.timeout(60000)});const data=await response.json();if(!response.ok)throw new Error(data.title||'Upload failed.');selectAfterReady.current=data.id;await refreshDocuments();setNotice('File uploaded. Processing must finish before it can be used for chat.');setDocumentsOpen(true);}catch(e){setDocumentError((e as Error).message);setDocumentsOpen(true);}finally{setUploading(false);}}
   const [active, setActive] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messagesMore, setMessagesMore] = useState(false);
@@ -190,13 +192,13 @@ export function Workspace({ user: initialUser }: { user: User }) {
   }
   return <div className="sp-app">
     <input ref={attachment} className="sr-only" type="file" aria-label="Chat attachment" accept=".pdf,.txt,.docx" onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)void uploadDocument(file);}}/>
-    <DocumentsPanel open={documentsOpen} onClose={()=>setDocumentsOpen(false)} documents={documents} refresh={refreshDocuments} selected={selectedDocuments} onSelect={setSelectedDocuments} onUpload={uploadDocument} busy={uploading} uploadError={error}/>
+    <DocumentsPanel open={documentsOpen} onClose={()=>setDocumentsOpen(false)} documents={documents} refresh={refreshDocuments} selected={selectedDocuments} onSelect={setSelectedDocuments} onUpload={uploadDocument} busy={uploading} uploadError={documentError}/>
     {sidebar && <button className="sp-overlay" aria-label="Close navigation" onClick={() => setSidebar(false)} />}
     <aside className={`sp-sidebar ${sidebar ? 'is-open' : ''}`}>
       <div className="sp-brand"><span className="sp-brand-symbol"><Bot size={25} /></span><div>Spilton <b>AI</b><small>A little clarity. A lot of possibility.</small></div><button className="sp-mobile-close" aria-label="Close sidebar" onClick={() => setSidebar(false)}><X size={18}/></button></div>
       <button className="sp-new" aria-label="New Chat" disabled={!hydrated || generating} onClick={newChat}><Plus size={18} /> New Chat <span aria-hidden="true">＋</span></button>
       <button className="sp-search" disabled><Search size={15} /> Search chats <small>Soon</small></button>
-      <button className="sp-nav" onClick={()=>{setDocumentsOpen(true);void refreshDocuments().catch(fail);setSidebar(false);}}><Files size={17}/> Documents</button>
+      <button className="sp-nav" onClick={()=>{setDocumentsOpen(true);void refreshDocuments().catch(e=>setDocumentError(e.message));setSidebar(false);}}><Files size={17}/> Documents</button>
       <Link className="sp-nav" href={hydrated?"/prepare"+(spaceId()?"?space="+spaceId():""):"/prepare"}><Home size={17}/> Dashboard · Spaces</Link><Link className="sp-nav" href={hydrated?"/government"+(spaceId()?"?space="+spaceId():""):"/government"}><BookOpen size={17}/> Notifications · PYQs · Affairs</Link><Link className="sp-nav" href={hydrated?"/mocks"+(spaceId()?"?space="+spaceId():""):"/mocks"}><ListChecks size={17}/> Mock Tests · Practice</Link><nav aria-label="Main navigation"><button className="sp-nav active" disabled={generating} onClick={newChat}><Home size={17} /> Home</button></nav>
       <div className="sp-history"><div className="sp-section-label">CHAT HISTORY</div>{loading && !history.length && <p className="sp-muted">Loading conversations…</p>}{!loading && !history.length && <p className="sp-history-empty">Your next idea starts with a conversation.</p>}
         {['Today', 'Yesterday', 'Earlier'].map(group => { const items = history.filter(c => dayGroup(c.updatedAt) === group); return items.length ? <section key={group}><h2>{group}</h2>{items.map(c => <div className={`sp-history-row ${active?.id === c.id ? 'selected' : ''}`} key={c.id}>

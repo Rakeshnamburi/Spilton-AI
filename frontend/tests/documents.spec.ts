@@ -4,7 +4,7 @@ import path from 'node:path';
 test('documents: upload, ready, select, grounded stream, source, reload, regenerate and delete',async({page})=>{
   test.setTimeout(120000);
   const real=process.env.TEST_REAL_RAG==='1';
-  await page.goto('/register');await page.getByLabel('Full name').fill('Document Explorer');await page.getByLabel('Email').fill(`document-ui-${randomUUID()}@example.test`);await page.getByLabel('Password',{exact:true}).fill(randomBytes(24).toString('base64url'));await page.getByRole('button',{name:'Create account',exact:true}).click();await expect(page).toHaveURL(/\/chat$/);
+  await page.goto('/register');await page.getByLabel('Full name').fill('Document Explorer');await page.getByLabel('Email').fill(`document-ui-${randomUUID()}@example.test`);await page.getByLabel('Password',{exact:true}).fill(randomBytes(24).toString('base64url'));await page.getByRole('button',{name:'Create account',exact:true}).click();await expect(page).toHaveURL(/verify-email/); await page.getByRole('link',{name:'Continue and verify later'}).click(); await expect(page).toHaveURL(/\/chat$/);
   await page.getByRole('combobox',{name:'Model',exact:true}).selectOption(real?'compatible':'development');
   await page.getByLabel('Chat attachment',{exact:true}).setInputFiles(path.resolve('../.local/day3-fixtures/scholarship.pdf'));
   const dialog=page.getByRole('dialog',{name:'Your documents'});await expect(dialog).toBeVisible();await expect(dialog.getByText('Ready',{exact:true})).toBeVisible({timeout:45000});await expect(page.getByRole('checkbox',{name:'Select scholarship.pdf'})).toBeChecked();
