@@ -54,8 +54,7 @@ public sealed class OpenAiCompatibleImageGenerationProvider(
             model = settings.Model,
             prompt = prompt.Trim(),
             size,
-            n = 1,
-            response_format = "b64_json"
+            n = 1
         }), Encoding.UTF8, "application/json");
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
