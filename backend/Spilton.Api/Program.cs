@@ -16,6 +16,7 @@ using Spilton.Api.Government;
 using Spilton.Api.Web;
 using Amazon.Runtime;
 using Amazon.S3;
+using Spilton.Api.Images;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -74,6 +75,11 @@ builder.Services.AddScoped<ModelProviderFactory>();
 builder.Services.AddScoped<IModelProviderResolver>(s => s.GetRequiredService<ModelProviderFactory>());
 builder.Services.AddSingleton<IProviderHealth,ProviderHealth>();
 builder.Services.AddSingleton<IMultimodalProvider,UnavailableMultimodalProvider>();
+var imageGeneration = builder.Configuration.GetSection("ImageGeneration").Get<ImageGenerationSettings>() ?? new();
+builder.Services.AddSingleton(imageGeneration);
+builder.Services.AddHttpClient("image-generation", client => client.Timeout = Timeout.InfiniteTimeSpan)
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+builder.Services.AddSingleton<IImageGenerationProvider,OpenAiCompatibleImageGenerationProvider>();
 builder.Services.AddSingleton<Spilton.Api.Coding.CodingWorkspacePolicy>();
 builder.Services.AddSingleton<Spilton.Api.Coding.ICodingWorkspace,Spilton.Api.Coding.UnavailableCodingWorkspace>();
 builder.Services.AddSingleton<Spilton.Api.Coding.ICodeExecutionService,Spilton.Api.Coding.UnavailableCodeExecutionService>();
@@ -151,6 +157,9 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("chat", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirst("sub")?.Value ?? "anonymous",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("imageGeneration", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst("sub")?.Value ?? "anonymous",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 }));
     options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = builder.Environment.IsDevelopment() ? 1000 : 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));

@@ -19,6 +19,9 @@ foreach ($entry in @{EMAIL_PROVIDER='Email__Provider';EMAIL_SMTP_HOST='Email__Sm
 foreach ($entry in @{STORAGE_PROVIDER='Storage__Provider';STORAGE_ENDPOINT='Storage__Endpoint';STORAGE_REGION='Storage__Region';STORAGE_BUCKET='Storage__Bucket';STORAGE_ACCESS_KEY='Storage__AccessKey';STORAGE_SECRET_KEY='Storage__SecretKey';STORAGE_KEY_PREFIX='Storage__KeyPrefix';STORAGE_FORCE_PATH_STYLE='Storage__ForcePathStyle'}.GetEnumerator()) {
     if ($settings.ContainsKey($entry.Key)) { [Environment]::SetEnvironmentVariable($entry.Value,$settings[$entry.Key],'Process') }
 }
+foreach ($entry in @{IMAGE_GENERATION_PROVIDER='ImageGeneration__Provider';IMAGE_GENERATION_BASE_URL='ImageGeneration__BaseUrl';IMAGE_GENERATION_API_KEY='ImageGeneration__ApiKey';IMAGE_GENERATION_MODEL='ImageGeneration__Model';IMAGE_GENERATION_TIMEOUT_SECONDS='ImageGeneration__TimeoutSeconds'}.GetEnumerator()) {
+    if ($settings.ContainsKey($entry.Key)) { [Environment]::SetEnvironmentVariable($entry.Value,$settings[$entry.Key],'Process') }
+}
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 $env:ASPNETCORE_URLS = 'http://localhost:5081'
 $env:DOTNET_CLI_HOME = Join-Path $projectRoot '.local/dotnet-home'

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import {sessionFetch} from '@/lib/session-fetch';
-import { Plus, Search, Home, BookOpen, ListChecks, Files, Bot, Settings, MessageSquare, Menu, X, Send, Square, Paperclip, Globe, Zap, Pencil, Trash2, RotateCcw, Sparkles, ChevronRight } from 'lucide-react';
+import { Plus, Search, Home, BookOpen, ListChecks, Files, Bot, Settings, MessageSquare, Menu, X, Send, Square, Paperclip, Globe, Zap, Pencil, Trash2, RotateCcw, Sparkles, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { apiRequest, type User } from '@/lib/api-client';
 import { chatRequest, streamChat, type Conversation, type ConversationDetail, type ChatMessage, type Model } from '@/lib/chat-client';
 import { MarkdownMessage, CopyButton, DownloadProjectButton, hasNamedProjectFiles } from './markdown-message';
@@ -199,7 +199,7 @@ export function Workspace({ user: initialUser }: { user: User }) {
       <button className="sp-new" aria-label="New Chat" disabled={!hydrated || generating} onClick={newChat}><Plus size={18} /> New Chat <span aria-hidden="true">＋</span></button>
       <button className="sp-search" disabled><Search size={15} /> Search chats <small>Soon</small></button>
       <button className="sp-nav" onClick={()=>{setDocumentsOpen(true);void refreshDocuments().catch(e=>setDocumentError(e.message));setSidebar(false);}}><Files size={17}/> Documents</button>
-      <Link className="sp-nav" href={hydrated?"/prepare"+(spaceId()?"?space="+spaceId():""):"/prepare"}><Home size={17}/> Dashboard · Spaces</Link><Link className="sp-nav" href={hydrated?"/government"+(spaceId()?"?space="+spaceId():""):"/government"}><BookOpen size={17}/> Notifications · PYQs · Affairs</Link><Link className="sp-nav" href={hydrated?"/mocks"+(spaceId()?"?space="+spaceId():""):"/mocks"}><ListChecks size={17}/> Mock Tests · Practice</Link><nav aria-label="Main navigation"><button className="sp-nav active" disabled={generating} onClick={newChat}><Home size={17} /> Home</button></nav>
+      <Link className="sp-nav" href={hydrated?"/prepare"+(spaceId()?"?space="+spaceId():""):"/prepare"}><Home size={17}/> Dashboard · Spaces</Link><Link className="sp-nav" href={hydrated?"/government"+(spaceId()?"?space="+spaceId():""):"/government"}><BookOpen size={17}/> Notifications · PYQs · Affairs</Link><Link className="sp-nav" href={hydrated?"/mocks"+(spaceId()?"?space="+spaceId():""):"/mocks"}><ListChecks size={17}/> Mock Tests · Practice</Link><Link className="sp-nav" href="/images"><ImageIcon size={17}/> Create images</Link><nav aria-label="Main navigation"><button className="sp-nav active" disabled={generating} onClick={newChat}><Home size={17} /> Home</button></nav>
       <div className="sp-history"><div className="sp-section-label">CHAT HISTORY</div>{loading && !history.length && <p className="sp-muted">Loading conversations…</p>}{!loading && !history.length && <p className="sp-history-empty">Your next idea starts with a conversation.</p>}
         {['Today', 'Yesterday', 'Earlier'].map(group => { const items = history.filter(c => dayGroup(c.updatedAt) === group); return items.length ? <section key={group}><h2>{group}</h2>{items.map(c => <div className={`sp-history-row ${active?.id === c.id ? 'selected' : ''}`} key={c.id}>
           <button className="sp-history-open" disabled={generating} onClick={() => openConversation(c.id)} title={c.title}><MessageSquare size={14} /><span>{c.title}</span></button>
