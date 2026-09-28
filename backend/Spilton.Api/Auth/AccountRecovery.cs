@@ -117,8 +117,9 @@ public sealed class AccountRecoveryController(AppDbContext db, IPasswordHasher<U
         if (!email.Available) return StatusCode(503, new { code = "EMAIL_NOT_CONFIGURED", title = "Email delivery is not configured. Please contact support." });
         var user = await db.Users.SingleAsync(x => x.Id == UserId && x.IsActive, ct);
         if (user.EmailVerifiedAt is not null) return NoContent();
-        if (!await verification.Send(user, ct))
-            return StatusCode(503, new { code = "EMAIL_DELIVERY_FAILED", title = "The email service could not send your verification code. Please try again later or contact support." });
+        var result = await verification.Send(user, ct);
+        if (!result.Sent)
+            return StatusCode(503, new { code = "EMAIL_DELIVERY_FAILED", title = result.Error });
         return Accepted(new { message = "A six-digit verification code has been sent." });
     }
 
@@ -153,8 +154,8 @@ public sealed class AccountRecoveryController(AppDbContext db, IPasswordHasher<U
             catch (Exception ex)
             {
                 await db.Set<AccountChallenge>().Where(x => x.Id == challenge.Id && x.UsedAt == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), CancellationToken.None);
-                logger.LogWarning("Password recovery delivery failed. ErrorType={ErrorType} ProviderStatus={ProviderStatus}", ex.GetType().Name, (ex as HttpRequestException)?.StatusCode);
-                return StatusCode(503, new { code = "EMAIL_DELIVERY_FAILED", title = "The email service could not send your OTP. Please try again later or contact support." });
+                logger.LogWarning("Password recovery delivery failed. ErrorType={ErrorType} ProviderStatus={ProviderStatus} ProviderCode={ProviderCode}", ex.GetType().Name, (ex as EmailDeliveryException)?.StatusCode, (ex as EmailDeliveryException)?.ProviderCode);
+                return StatusCode(503, new { code = "EMAIL_DELIVERY_FAILED", title = EmailDeliveryException.PublicMessage(ex, "OTP") });
             }
         }
         return Accepted(new { message = "If an active account uses that email, a six-digit reset code has been sent." });

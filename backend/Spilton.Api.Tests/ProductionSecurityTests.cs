@@ -1,5 +1,6 @@
 using Spilton.Api.Security;
 using Spilton.Api.Documents;
+using Spilton.Api.Auth;
 
 namespace Spilton.Api.Tests;
 public sealed class ProductionSecurityTests
@@ -12,6 +13,15 @@ public sealed class ProductionSecurityTests
         Assert.False(new StorageSettings{Provider="S3",Endpoint="http://storage.example.test",Bucket="private",AccessKey="a",SecretKey="b"}.IsConfigured);
         Assert.False(new StorageSettings{Provider="S3",Endpoint="https://storage.example.test",Bucket="",AccessKey="a",SecretKey="b"}.IsConfigured);
         Assert.True(new StorageSettings{Provider="S3",Endpoint="https://storage.example.test",Bucket="private",AccessKey="a",SecretKey="b"}.IsConfigured);
+    }
+    [Fact] public void Database_storage_requires_no_external_bucket_credentials()
+        => Assert.True(new StorageSettings { Provider = "Database" }.IsConfigured);
+    [Fact] public void Google_oauth_requires_https_callback_and_frontend()
+    {
+        var valid = new GoogleSettings { ClientId = "client", ClientSecret = "secret", RedirectUri = "https://api.example.test/api/auth/google/callback", FrontendOrigin = "https://app.example.test" };
+        Assert.True(valid.IsConfigured);
+        valid.RedirectUri = "http://api.example.test/callback";
+        Assert.False(valid.IsConfigured);
     }
     [Fact] public async Task Budget_is_atomic_and_partitions_users()
     {

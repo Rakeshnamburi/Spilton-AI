@@ -36,12 +36,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
+    public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
     public DbSet<Space> Spaces=>Set<Space>();public DbSet<Exam> Exams=>Set<Exam>();public DbSet<ExamStage> ExamStages=>Set<ExamStage>();public DbSet<Subject> Subjects=>Set<Subject>();public DbSet<Topic> Topics=>Set<Topic>();
     public DbSet<UserExamProfile> UserExamProfiles=>Set<UserExamProfile>();public DbSet<UserTopicProgress> UserTopicProgress=>Set<UserTopicProgress>();public DbSet<Goal> Goals=>Set<Goal>();public DbSet<Memory> Memories=>Set<Memory>();public DbSet<StudyPlan> StudyPlans=>Set<StudyPlan>();public DbSet<StudyPlanItem> StudyPlanItems=>Set<StudyPlanItem>();
     protected override void OnModelCreating(ModelBuilder model)
     {
         Spilton.Api.Auth.SessionModel.Configure(model);
         Spilton.Api.Auth.AccountRecoveryModel.Configure(model);
+        Spilton.Api.Auth.GoogleOAuthModel.Configure(model);
         PreparationModel.Configure(model);
         MockModel.Configure(model);
         var resources=model.Entity<GovernmentResource>();resources.HasOne(r=>r.User).WithMany().HasForeignKey(r=>r.UserId).OnDelete(DeleteBehavior.Cascade);resources.HasOne(r=>r.Space).WithMany().HasForeignKey(r=>r.SpaceId).OnDelete(DeleteBehavior.Restrict);resources.HasOne(r=>r.Exam).WithMany().HasForeignKey(r=>r.ExamId).OnDelete(DeleteBehavior.Restrict);resources.HasOne(r=>r.Document).WithMany().HasForeignKey(r=>r.DocumentId).OnDelete(DeleteBehavior.Cascade);resources.HasIndex(r=>new{r.UserId,r.SpaceId,r.Kind});model.Entity<NotificationField>().HasOne(f=>f.GovernmentResource).WithMany(r=>r.Fields).HasForeignKey(f=>f.GovernmentResourceId).OnDelete(DeleteBehavior.Cascade);
@@ -59,6 +61,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         var chunks=model.Entity<DocumentChunk>();chunks.HasOne(c=>c.Document).WithMany(d=>d.Chunks).HasForeignKey(c=>c.DocumentId).OnDelete(DeleteBehavior.Cascade);
         chunks.HasIndex(c=>new{c.DocumentId,c.ChunkIndex}).IsUnique();chunks.Property(c=>c.Content).HasMaxLength(6000);chunks.Property(c=>c.Section).HasMaxLength(200);
         chunks.Property(c=>c.Embedding).HasColumnType("vector(384)");
+        var storedFiles=model.Entity<StoredFile>();storedFiles.HasKey(x=>x.Name);storedFiles.Property(x=>x.Name).HasMaxLength(40);storedFiles.Property(x=>x.Content).HasColumnType("bytea");
         var conversations = model.Entity<Conversation>();
         conversations.Property(c => c.Title).HasMaxLength(100).IsRequired();
         conversations.HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);

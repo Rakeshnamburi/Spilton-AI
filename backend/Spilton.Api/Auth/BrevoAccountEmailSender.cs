@@ -1,7 +1,26 @@
 using System.Net.Mail;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Spilton.Api.Auth;
+
+public sealed class EmailDeliveryException(string message, System.Net.HttpStatusCode? statusCode = null, string? providerCode = null)
+    : Exception(message)
+{
+    public System.Net.HttpStatusCode? StatusCode { get; } = statusCode;
+    public string? ProviderCode { get; } = providerCode;
+    public static string PublicMessage(Exception exception, string kind)
+    {
+        if (exception is not EmailDeliveryException delivery) return $"The email service could not send your {kind}. Please try again later.";
+        return delivery.StatusCode switch
+        {
+            System.Net.HttpStatusCode.Unauthorized => "Brevo rejected the API key. Create a new Brevo API v3 key and update Email__BrevoApiKey in Render.",
+            System.Net.HttpStatusCode.Forbidden => "Brevo has not activated sending for this account. Complete Brevo phone/account verification, then try again.",
+            System.Net.HttpStatusCode.BadRequest => "Brevo rejected the sender address. Verify Email__FromAddress under Brevo → Senders, domains, IPs.",
+            _ => $"The email service could not send your {kind}. Please try again later."
+        };
+    }
+}
 
 public sealed class BrevoAccountEmailSender(EmailSettings settings, IHttpClientFactory clients) : IAccountEmailSender
 {
@@ -29,8 +48,16 @@ public sealed class BrevoAccountEmailSender(EmailSettings settings, IHttpClientF
         });
         using var client = clients.CreateClient("brevo-email");
         using var response = await client.SendAsync(request, ct);
-        // Never include provider response bodies, recipient details, or codes in errors.
         if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException($"Email provider rejected the request (HTTP {(int)response.StatusCode}).", null, response.StatusCode);
+        {
+            string? providerCode = null;
+            try
+            {
+                using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+                if (body.RootElement.TryGetProperty("code", out var value)) providerCode = value.GetString();
+            }
+            catch (JsonException) { }
+            throw new EmailDeliveryException($"Email provider rejected the request (HTTP {(int)response.StatusCode}).", response.StatusCode, providerCode);
+        }
     }
 }

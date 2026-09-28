@@ -13,7 +13,10 @@ foreach ($entry in @{ MODEL_DEFAULT='Models__Default'; MODEL_BASE_URL='Models__B
     if ($settings.ContainsKey($entry.Key)) { [Environment]::SetEnvironmentVariable($entry.Value, $settings[$entry.Key], 'Process') }
 }
 if ($settings.ContainsKey('WEB_TAVILY_API_KEY')) { $env:Web__TavilyApiKey = $settings.WEB_TAVILY_API_KEY }
-foreach ($entry in @{EMAIL_PROVIDER='Email__Provider';EMAIL_SMTP_HOST='Email__SmtpHost';EMAIL_SMTP_PORT='Email__SmtpPort';EMAIL_SMTP_USERNAME='Email__SmtpUsername';EMAIL_SMTP_PASSWORD='Email__SmtpPassword';EMAIL_FROM_ADDRESS='Email__FromAddress';EMAIL_FROM_NAME='Email__FromName';EMAIL_ENABLE_SSL='Email__EnableSsl'}.GetEnumerator()) {
+foreach ($entry in @{EMAIL_PROVIDER='Email__Provider';EMAIL_BREVO_API_KEY='Email__BrevoApiKey';EMAIL_SMTP_HOST='Email__SmtpHost';EMAIL_SMTP_PORT='Email__SmtpPort';EMAIL_SMTP_USERNAME='Email__SmtpUsername';EMAIL_SMTP_PASSWORD='Email__SmtpPassword';EMAIL_FROM_ADDRESS='Email__FromAddress';EMAIL_FROM_NAME='Email__FromName';EMAIL_ENABLE_SSL='Email__EnableSsl'}.GetEnumerator()) {
+    if ($settings.ContainsKey($entry.Key)) { [Environment]::SetEnvironmentVariable($entry.Value,$settings[$entry.Key],'Process') }
+}
+foreach ($entry in @{GOOGLE_CLIENT_ID='GOOGLE_CLIENT_ID';GOOGLE_CLIENT_SECRET='GOOGLE_CLIENT_SECRET';GOOGLE_REDIRECT_URI='Google__RedirectUri';GOOGLE_FRONTEND_ORIGIN='Google__FrontendOrigin'}.GetEnumerator()) {
     if ($settings.ContainsKey($entry.Key)) { [Environment]::SetEnvironmentVariable($entry.Value,$settings[$entry.Key],'Process') }
 }
 foreach ($entry in @{STORAGE_PROVIDER='Storage__Provider';STORAGE_ENDPOINT='Storage__Endpoint';STORAGE_REGION='Storage__Region';STORAGE_BUCKET='Storage__Bucket';STORAGE_ACCESS_KEY='Storage__AccessKey';STORAGE_SECRET_KEY='Storage__SecretKey';STORAGE_KEY_PREFIX='Storage__KeyPrefix';STORAGE_FORCE_PATH_STYLE='Storage__ForcePathStyle'}.GetEnumerator()) {

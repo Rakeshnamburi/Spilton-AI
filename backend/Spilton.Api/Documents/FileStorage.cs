@@ -1,6 +1,8 @@
 using System.Net;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Microsoft.EntityFrameworkCore;
+using Spilton.Api.Data;
 
 namespace Spilton.Api.Documents;
 public interface IFileStorage
@@ -49,5 +51,43 @@ public sealed class S3FileStorage(IAmazonS3 s3,StorageSettings settings) : IFile
     {
         try{await s3.DeleteObjectAsync(new DeleteObjectRequest{BucketName=settings.Bucket,Key=Key(name)},ct);}
         catch(AmazonS3Exception ex){throw new IOException("Object storage deletion failed.",ex);}
+    }
+}
+
+public sealed class DatabaseFileStorage(AppDbContext db) : IFileStorage
+{
+    public string Provider => "Database";
+    private static void Validate(string name)
+    {
+        if(!System.Text.RegularExpressions.Regex.IsMatch(name,@"^[a-f0-9]{32}\.(pdf|txt|docx)$"))
+            throw new DocumentException("Invalid storage identifier.");
+    }
+    public async Task SaveAsync(string name, Stream input, CancellationToken ct)
+    {
+        Validate(name);
+        using var output = new MemoryStream();
+        var buffer = new byte[81920]; long total = 0; int read;
+        while((read = await input.ReadAsync(buffer, ct)) > 0)
+        {
+            total += read;
+            if(total > RagSettings.MaxFileBytes) throw new DocumentException("Files must be 5 MB or smaller.");
+            await output.WriteAsync(buffer.AsMemory(0, read), ct);
+        }
+        db.Add(new StoredFile { Name = name, Content = output.ToArray() });
+        try { await db.SaveChangesAsync(ct); }
+        catch(DbUpdateException ex) { throw new IOException("The storage identifier already exists.", ex); }
+    }
+    public async Task<Stream> OpenReadAsync(string name, CancellationToken ct)
+    {
+        Validate(name);
+        var content = await db.Set<StoredFile>().AsNoTracking().Where(x => x.Name == name).Select(x => x.Content).SingleOrDefaultAsync(ct)
+            ?? throw new FileNotFoundException("Stored file was not found.");
+        if(content.LongLength > RagSettings.MaxFileBytes) throw new DocumentException("Stored file exceeds the allowed size.");
+        return new MemoryStream(content, writable: false);
+    }
+    public async Task DeleteAsync(string name, CancellationToken ct)
+    {
+        Validate(name);
+        await db.Set<StoredFile>().Where(x => x.Name == name).ExecuteDeleteAsync(ct);
     }
 }

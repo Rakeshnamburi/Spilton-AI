@@ -35,17 +35,18 @@ builder.Services.AddSingleton(rag);
 builder.Services.AddSingleton<MiniLmTokenizer>();
 builder.Services.AddSingleton<IEmbeddingProvider,LocalEmbeddingProvider>();
 var storage = builder.Configuration.GetSection("Storage").Get<StorageSettings>() ?? new();
-if (!storage.IsConfigured || !storage.IsLocal && !storage.IsS3)
-    throw new InvalidOperationException("Storage:Provider must be Local or a fully configured private S3-compatible store.");
+if (!storage.IsConfigured || !storage.IsLocal && !storage.IsS3 && !storage.IsDatabase)
+    throw new InvalidOperationException("Storage:Provider must be Local, Database, or a fully configured private S3-compatible store.");
 builder.Services.AddSingleton(storage);
 if (storage.IsS3)
 {
     builder.Services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(
         new BasicAWSCredentials(storage.AccessKey, storage.SecretKey),
         new AmazonS3Config { ServiceURL = storage.Endpoint, AuthenticationRegion = storage.Region, ForcePathStyle = storage.ForcePathStyle }));
-    builder.Services.AddSingleton<IFileStorage,S3FileStorage>();
+    builder.Services.AddScoped<IFileStorage,S3FileStorage>();
 }
-else builder.Services.AddSingleton<IFileStorage,LocalFileStorage>();
+else if (storage.IsDatabase) builder.Services.AddScoped<IFileStorage,DatabaseFileStorage>();
+else builder.Services.AddScoped<IFileStorage,LocalFileStorage>();
 builder.Services.AddSingleton<DocumentExtractor>();builder.Services.AddSingleton<DocumentChunker>();
 builder.Services.AddScoped<RetrievalService>();builder.Services.AddScoped<RagContextBuilder>();
 builder.Services.AddScoped<ScopeGuard>();builder.Services.AddScoped<PreparationService>();builder.Services.AddScoped<PersonalizedContext>();
@@ -58,6 +59,12 @@ builder.Services.Configure<PasswordHasherOptions>(options => options.IterationCo
 builder.Services.AddSingleton<LoginTimingGuard>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<SessionService>();
+var google = builder.Configuration.GetSection("Google").Get<GoogleSettings>() ?? new();
+google.ClientId = builder.Configuration["GOOGLE_CLIENT_ID"] ?? google.ClientId;
+google.ClientSecret = builder.Configuration["GOOGLE_CLIENT_SECRET"] ?? google.ClientSecret;
+builder.Services.AddSingleton(google);
+builder.Services.AddHttpClient("google-oauth", client => client.Timeout = TimeSpan.FromSeconds(20))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 var emailSettings = builder.Configuration.GetSection("Email").Get<EmailSettings>() ?? new();
 builder.Services.AddSingleton(emailSettings);
 builder.Services.AddScoped<VerificationDelivery>();

@@ -44,7 +44,7 @@ public class BrevoEmailTests
     public async Task Rejects_provider_failure_without_exposing_response_body()
     {
         var sender = new BrevoAccountEmailSender(Settings(), new Transport(HttpStatusCode.Unauthorized));
-        var error = await Assert.ThrowsAsync<HttpRequestException>(() => sender.SendPasswordResetCode("member@example.test", "Member", "123456", default));
+        var error = await Assert.ThrowsAsync<EmailDeliveryException>(() => sender.SendPasswordResetCode("member@example.test", "Member", "123456", default));
         Assert.Equal(HttpStatusCode.Unauthorized, error.StatusCode);
         Assert.DoesNotContain("sensitive", error.Message);
         Assert.DoesNotContain("123456", error.Message);

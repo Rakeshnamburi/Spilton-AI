@@ -5,11 +5,12 @@ using Spilton.Api.Data;
 
 namespace Spilton.Api.Auth;
 
+public sealed record EmailDeliveryResult(bool Sent, string? Error = null);
 public sealed class VerificationDelivery(AppDbContext db, IAccountEmailSender email, TimeProvider clock, ILogger<VerificationDelivery> logger)
 {
-    public async Task<bool> Send(User user, CancellationToken ct)
+    public async Task<EmailDeliveryResult> Send(User user, CancellationToken ct)
     {
-        if (!email.Available) return false;
+        if (!email.Available) return new(false, "Email delivery is not configured. Check Email__Provider, Email__BrevoApiKey, and Email__FromAddress in Render.");
         var now = clock.GetUtcNow();
         await db.Set<AccountChallenge>().Where(x => x.UserId == user.Id && x.Purpose == "EMAIL_VERIFICATION" && x.UsedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), ct);
@@ -19,12 +20,12 @@ public sealed class VerificationDelivery(AppDbContext db, IAccountEmailSender em
             CodeHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(salt + ":" + code))), CreatedAt = now, ExpiresAt = now.AddMinutes(10) };
         db.Add(challenge);
         await db.SaveChangesAsync(ct);
-        try { await email.SendEmailVerificationCode(user.Email, user.Name, code, ct); return true; }
+        try { await email.SendEmailVerificationCode(user.Email, user.Name, code, ct); return new(true); }
         catch (Exception ex)
         {
             await db.Set<AccountChallenge>().Where(x => x.Id == challenge.Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.UsedAt, now), CancellationToken.None);
-            logger.LogWarning("Verification delivery failed. ErrorType={ErrorType} ProviderStatus={ProviderStatus}", ex.GetType().Name, (ex as HttpRequestException)?.StatusCode);
-            return false;
+            logger.LogWarning("Verification delivery failed. ErrorType={ErrorType} ProviderStatus={ProviderStatus} ProviderCode={ProviderCode}", ex.GetType().Name, (ex as EmailDeliveryException)?.StatusCode, (ex as EmailDeliveryException)?.ProviderCode);
+            return new(false, EmailDeliveryException.PublicMessage(ex, "verification code"));
         }
     }
 }

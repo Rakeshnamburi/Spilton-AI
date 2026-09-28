@@ -66,8 +66,15 @@ public sealed class StorageSettings
 
     public bool IsS3 => Provider.Equals("S3", StringComparison.OrdinalIgnoreCase);
     public bool IsLocal => Provider.Equals("Local", StringComparison.OrdinalIgnoreCase);
-    public bool IsConfigured => IsLocal || IsS3 && Uri.TryCreate(Endpoint, UriKind.Absolute, out var endpoint)
+    public bool IsDatabase => Provider.Equals("Database", StringComparison.OrdinalIgnoreCase);
+    public bool IsConfigured => IsLocal || IsDatabase || IsS3 && Uri.TryCreate(Endpoint, UriKind.Absolute, out var endpoint)
         && endpoint.Scheme == Uri.UriSchemeHttps && !string.IsNullOrWhiteSpace(Bucket)
         && !string.IsNullOrWhiteSpace(AccessKey) && !string.IsNullOrWhiteSpace(SecretKey);
+}
+public sealed class StoredFile
+{
+    public string Name { get; set; } = "";
+    public byte[] Content { get; set; } = [];
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 public sealed class DocumentException(string message) : Exception(message);
