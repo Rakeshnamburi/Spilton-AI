@@ -37,7 +37,7 @@ export function AuthForm({ mode, initialError = "" }: { mode: "login" | "registe
         {error && <p role="alert" aria-live="assertive" className="error-message"><strong>Unable to continue.</strong><br/>{error}</p>}
         {showRecovery && <div className="recovery-action"><strong>{register ? "Already registered?" : "Cannot remember the password?"}</strong><span>We can send a secure 6-digit code to this email.</span><div><Link href={recoveryHref}>Reset password with OTP</Link>{register && <Link href="/login">Go to sign in</Link>}</div></div>}
         <button className="primary-button" type="submit">{loading ? (register ? "Creating account…" : "Signing in…") : (register ? "Create account" : "Sign in")}</button>
-        <a className="secondary-button" href="/api/auth/google/start">Continue with Google</a>
+        <Link className="secondary-button" href="/api/auth/google/start">Continue with Google</Link>
       </fieldset></form>
       <p className="auth-switch">{register ? "Already have an account?" : "New to Spilton?"} <Link href={register ? "/login" : "/register"}>{register ? "Sign in" : "Create an account"}</Link></p>
     </section><p className="auth-footer">Secure access · Spilton AI</p></section>
